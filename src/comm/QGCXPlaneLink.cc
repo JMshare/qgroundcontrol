@@ -421,8 +421,8 @@ void QGCXPlaneLink::updateControls(quint64 time, float rollAilerons, float pitch
         p.index = 25;
         memset(p.f, 0, sizeof(p.f));
         p.f[0] = throttle;
-        p.f[1] = throttle;
-        p.f[2] = throttle;
+        p.f[1] = throttle + 0.15f*rollAilerons + 0.15f*yawRudder;
+        p.f[2] = throttle - 0.15f*rollAilerons - 0.15f*yawRudder;
         p.f[3] = throttle;
         writeBytesSafe((const char*)&p, sizeof(p));
     }
