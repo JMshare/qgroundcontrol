@@ -421,9 +421,21 @@ void QGCXPlaneLink::updateControls(quint64 time, float rollAilerons, float pitch
         p.index = 25;
         memset(p.f, 0, sizeof(p.f));
         p.f[0] = throttle;
-        p.f[1] = throttle;
-        p.f[2] = throttle;
+        p.f[1] = throttle - 0.3f*rollAilerons - 0.3f*yawRudder;
+        p.f[2] = throttle + 0.3f*rollAilerons + 0.3f*yawRudder;
         p.f[3] = throttle;
+        if(p.f[1] < 0.0f){
+            p.f[1] = 0.0f;
+        }
+        if(p.f[2] < 0.0f){
+            p.f[2] = 0.0f;
+        }
+        if(p.f[1] > 1.0f){
+            p.f[1] = 1.0f;
+        }
+        if(p.f[2] > 1.0f){
+            p.f[2] = 1.0f;
+        }
         writeBytesSafe((const char*)&p, sizeof(p));
     }
 }
@@ -531,6 +543,20 @@ void QGCXPlaneLink::updateActuatorControls(quint64 time, quint64 flags, float ct
             p.f[5] = ctl_3;
             p.f[6] = ctl_3;
             p.f[7] = ctl_3;
+            p.f[1] = ctl_3 - 0.3f*ctl_0 - 0.3f*ctl_2;
+            p.f[2] = ctl_3 + 0.3f*ctl_0 + 0.3f*ctl_2;
+            if(p.f[1] < 0.0f){
+                p.f[1] = 0.0f;
+            }
+            if(p.f[2] < 0.0f){
+                p.f[2] = 0.0f;
+            }
+            if(p.f[1] > 1.0f){
+                p.f[1] = 1.0f;
+            }
+            if(p.f[2] > 1.0f){
+                p.f[2] = 1.0f;
+            }
             writeBytesSafe((const char*)&p, sizeof(p));
 
             /* Send flap signals, assuming that they are mapped to channel 5 (ctl_4) */
