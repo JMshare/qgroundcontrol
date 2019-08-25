@@ -345,7 +345,7 @@ void MAVLinkProtocol::receiveBytes(LinkInterface* link, QByteArray b)
  **/
 QString MAVLinkProtocol::getName()
 {
-    return QString(tr("MAVLink protocol"));
+    return tr("MAVLink protocol");
 }
 
 /** @return System id of this application */
@@ -461,7 +461,7 @@ void MAVLinkProtocol::checkForLostLogFiles(void)
     QFileInfoList fileInfoList = tempDir.entryInfoList(QStringList(filter), QDir::Files);
     //qDebug() << "Orphaned log file count" << fileInfoList.count();
 
-    for(const QFileInfo fileInfo: fileInfoList) {
+    for(const QFileInfo& fileInfo: fileInfoList) {
         //qDebug() << "Orphaned log file" << fileInfo.filePath();
         if (fileInfo.size() == 0) {
             // Delete all zero length files

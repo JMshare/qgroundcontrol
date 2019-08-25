@@ -6,6 +6,18 @@ Note: This file only contains high level features or important fixes.
 
 ### 3.6.0 - Daily Build
 
+* Adding support for UDP RTP h.265 video streams
+* For text to speech engine on Linux to English (all messages are in English)
+* Automated the ingestion of localization from Crowdin
+* Automated the generation of language resources into the application
+* Added all languages that come from Crowdin, even if empty.
+* Allow dynamic language changes
+* Check and respect camera storage status
+* QGC now requires Qt 5.11 or greater. The idea is to standardize on Qt 5.12 (LTS). Just waiting for a solution for Windows as Qt dropped support for 32-bit.
+* New, QtQuick MAVLink Inspector. The basics are already there but it still needs the ability to filter compID.
+* Fixed application storage location on iOS. It was trying to save things where it could not.
+* Basic support for secondary, thermal imaging with video streaming. If a camera provides both visual spectrum and thermal imaging, you have the option of displaying both at the same time.
+* Better handling of fonts for Korean and Chinese locales. QGC now has builtin fonts for Korean (where some unusable font was being used). I still need to know if Chinese will need its own font as well.
 * ArduPilot: Copter - Add suppor for Simple and Super Simple flight modes
 * ArduPilot: Flight Mode setup - Switch Options were not showing up for all firmware revs
 * ArduCopter: Add PID Tuning page to Tuning Setup
@@ -22,7 +34,9 @@ Note: This file only contains high level features or important fixes.
 * ArduPilot: Support configurable mavlink stream rates. Available from Settings/Mavlink page.
 * Major rewrite and bug fix pass through Structure Scan. Previous version had such bad problems that it can no longer be supported. Plans with Structure Scan will need to be recreated. New QGC will not load old Structure Scan plans.
 
-### 3.5.3 - Not yet released
+### 3.5.3 - Stable
+* Change minimum RTK Survey-In limit to 0.01 meters
+* Change Windows driver detection logic
 * Fix crash when clicking on GeoFence polygon vertex
 * PX4: Fix missing ```MC_YAW_FF``` parameter in PID Tuning
 * ArduPilot: Fix parameter file save generating bad characters from git hash

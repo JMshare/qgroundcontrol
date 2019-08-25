@@ -338,7 +338,12 @@
       <maintainer>Michael Schaeuble</maintainer>
       <type>Quadrotor x</type>
     </airframe>
-    <airframe id="4014" maintainer="Lorenz Meier &lt;lorenz@px4.io&gt;" name="S500">
+    <airframe id="4014" maintainer="Lorenz Meier &lt;lorenz@px4.io&gt;" name="S500 Generic">
+      <class>Copter</class>
+      <maintainer>Lorenz Meier &lt;lorenz@px4.io&gt;</maintainer>
+      <type>Quadrotor x</type>
+    </airframe>
+    <airframe id="4015" maintainer="Lorenz Meier &lt;lorenz@px4.io&gt;" name="Holybro S500">
       <class>Copter</class>
       <maintainer>Lorenz Meier &lt;lorenz@px4.io&gt;</maintainer>
       <type>Quadrotor x</type>
@@ -678,6 +683,14 @@
       <output name="MAIN2">steering</output>
       <output name="MAIN4">throttle</output>
     </airframe>
+    <airframe id="50003" maintainer="Timothy Scott" name="Aion Robotics R1 UGV">
+      <class>Rover</class>
+      <maintainer>Timothy Scott</maintainer>
+      <type>Rover</type>
+      <url>http://docs.aionrobotics.com/en/latest/r1-ugv.html</url>
+      <output name="MAIN0">Speed of left wheels</output>
+      <output name="MAIN1">Speed of right wheels</output>
+    </airframe>
   </airframe_group>
   <airframe_group image="VTOLPlane" name="Standard VTOL">
     <airframe id="1002" maintainer="Roman Bapst &lt;roman@auterion.com&gt;" name="HIL Standard VTOL QuadPlane">
@@ -776,6 +789,26 @@
       <output name="MAIN2">motor left</output>
       <output name="MAIN5">elevon right</output>
       <output name="MAIN6">elevon left</output>
+    </airframe>
+  </airframe_group>
+  <airframe_group image="VTOLPlaneOcto" name="VTOL Octoplane">
+    <airframe id="13050" maintainer="" name="Generic Octoplane VTOL">
+      <class>VTOL</class>
+      <maintainer />
+      <type>VTOL Octoplane</type>
+      <output name="MAIN1">motor 1</output>
+      <output name="MAIN2">motor 2</output>
+      <output name="MAIN3">motor 3</output>
+      <output name="MAIN4">motor 4</output>
+      <output name="MAIN5">motor 5</output>
+      <output name="MAIN6">motor 6</output>
+      <output name="MAIN7">motor 7</output>
+      <output name="MAIN8">motor 8</output>
+      <output name="AUX1">Aileron 1</output>
+      <output name="AUX2">Aileron 2</output>
+      <output name="AUX3">Elevator</output>
+      <output name="AUX4">Rudder</output>
+      <output name="AUX5">Throttle</output>
     </airframe>
   </airframe_group>
   <airframe_group image="VTOLQuadRotorTailSitter" name="VTOL Quad Tailsitter">

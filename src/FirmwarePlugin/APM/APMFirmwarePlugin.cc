@@ -295,6 +295,11 @@ void APMFirmwarePlugin::_handleOutgoingParamSet(Vehicle* vehicle, LinkInterface*
 
     mavlink_msg_param_set_decode(message, &paramSet);
 
+    if (!_ardupilotComponentMap[paramSet.target_system][paramSet.target_component]) {
+        // Message is targetted to non-ArduPilot firmware component, assume it uses current mavlink spec
+        return;
+    }
+
     paramUnion.param_float = paramSet.param_value;
 
     switch (paramSet.param_type) {
@@ -502,13 +507,10 @@ bool APMFirmwarePlugin::adjustIncomingMavlinkMessage(Vehicle* vehicle, mavlink_m
 
 void APMFirmwarePlugin::adjustOutgoingMavlinkMessage(Vehicle* vehicle, LinkInterface* outgoingLink, mavlink_message_t* message)
 {
-    // Only translate messages which come from ArduPilot code. All other components are expected to follow current mavlink spec.
-    if (_ardupilotComponentMap[vehicle->id()][message->compid]) {
-        switch (message->msgid) {
-        case MAVLINK_MSG_ID_PARAM_SET:
-            _handleOutgoingParamSet(vehicle, outgoingLink, message);
-            break;
-        }
+    switch (message->msgid) {
+    case MAVLINK_MSG_ID_PARAM_SET:
+        _handleOutgoingParamSet(vehicle, outgoingLink, message);
+        break;
     }
 }
 
@@ -720,41 +722,39 @@ void APMFirmwarePlugin::addMetaDataToFact(QObject* parameterMetaData, Fact* fact
 
 QList<MAV_CMD> APMFirmwarePlugin::supportedMissionCommands(void)
 {
-    QList<MAV_CMD> list;
-
-    list << MAV_CMD_NAV_WAYPOINT
-         << MAV_CMD_NAV_LOITER_UNLIM << MAV_CMD_NAV_LOITER_TURNS << MAV_CMD_NAV_LOITER_TIME
-         << MAV_CMD_NAV_RETURN_TO_LAUNCH << MAV_CMD_NAV_LAND << MAV_CMD_NAV_TAKEOFF
-         << MAV_CMD_NAV_CONTINUE_AND_CHANGE_ALT
-         << MAV_CMD_NAV_LOITER_TO_ALT
-         << MAV_CMD_NAV_SPLINE_WAYPOINT
-         << MAV_CMD_NAV_GUIDED_ENABLE
-         << MAV_CMD_NAV_DELAY
-         << MAV_CMD_CONDITION_DELAY << MAV_CMD_CONDITION_DISTANCE << MAV_CMD_CONDITION_YAW
-         << MAV_CMD_DO_SET_MODE
-         << MAV_CMD_DO_JUMP
-         << MAV_CMD_DO_CHANGE_SPEED
-         << MAV_CMD_DO_SET_HOME
-         << MAV_CMD_DO_SET_RELAY << MAV_CMD_DO_REPEAT_RELAY
-         << MAV_CMD_DO_SET_SERVO << MAV_CMD_DO_REPEAT_SERVO
-         << MAV_CMD_DO_LAND_START
-         << MAV_CMD_DO_SET_ROI
-         << MAV_CMD_DO_DIGICAM_CONFIGURE << MAV_CMD_DO_DIGICAM_CONTROL
-         << MAV_CMD_DO_MOUNT_CONTROL
-         << MAV_CMD_DO_SET_CAM_TRIGG_DIST
-         << MAV_CMD_DO_FENCE_ENABLE
-         << MAV_CMD_DO_PARACHUTE
-         << MAV_CMD_DO_INVERTED_FLIGHT
-         << MAV_CMD_DO_GRIPPER
-         << MAV_CMD_DO_GUIDED_LIMITS
-         << MAV_CMD_DO_AUTOTUNE_ENABLE
-         << MAV_CMD_NAV_VTOL_TAKEOFF << MAV_CMD_NAV_VTOL_LAND << MAV_CMD_DO_VTOL_TRANSITION;
+    return {
+        MAV_CMD_NAV_WAYPOINT,
+        MAV_CMD_NAV_LOITER_UNLIM, MAV_CMD_NAV_LOITER_TURNS, MAV_CMD_NAV_LOITER_TIME,
+        MAV_CMD_NAV_RETURN_TO_LAUNCH, MAV_CMD_NAV_LAND, MAV_CMD_NAV_TAKEOFF,
+        MAV_CMD_NAV_CONTINUE_AND_CHANGE_ALT,
+        MAV_CMD_NAV_LOITER_TO_ALT,
+        MAV_CMD_NAV_SPLINE_WAYPOINT,
+        MAV_CMD_NAV_GUIDED_ENABLE,
+        MAV_CMD_NAV_DELAY,
+        MAV_CMD_CONDITION_DELAY, MAV_CMD_CONDITION_DISTANCE, MAV_CMD_CONDITION_YAW,
+        MAV_CMD_DO_SET_MODE,
+        MAV_CMD_DO_JUMP,
+        MAV_CMD_DO_CHANGE_SPEED,
+        MAV_CMD_DO_SET_HOME,
+        MAV_CMD_DO_SET_RELAY, MAV_CMD_DO_REPEAT_RELAY,
+        MAV_CMD_DO_SET_SERVO, MAV_CMD_DO_REPEAT_SERVO,
+        MAV_CMD_DO_LAND_START,
+        MAV_CMD_DO_SET_ROI,
+        MAV_CMD_DO_DIGICAM_CONFIGURE, MAV_CMD_DO_DIGICAM_CONTROL,
+        MAV_CMD_DO_MOUNT_CONTROL,
+        MAV_CMD_DO_SET_CAM_TRIGG_DIST,
+        MAV_CMD_DO_FENCE_ENABLE,
+        MAV_CMD_DO_PARACHUTE,
+        MAV_CMD_DO_INVERTED_FLIGHT,
+        MAV_CMD_DO_GRIPPER,
+        MAV_CMD_DO_GUIDED_LIMITS,
+        MAV_CMD_DO_AUTOTUNE_ENABLE,
+        MAV_CMD_NAV_VTOL_TAKEOFF, MAV_CMD_NAV_VTOL_LAND, MAV_CMD_DO_VTOL_TRANSITION,
 #if 0
     // Waiting for module update
-    << MAV_CMD_DO_SET_REVERSE;
+        MAV_CMD_DO_SET_REVERSE,
 #endif
-
-    return list;
+    };
 }
 
 QString APMFirmwarePlugin::missionCommandOverrides(MAV_TYPE vehicleType) const
@@ -819,10 +819,10 @@ QString APMFirmwarePlugin::internalParameterMetaDataFile(Vehicle* vehicle)
     case MAV_TYPE_COAXIAL:
     case MAV_TYPE_HELICOPTER:
         if (vehicle->versionCompare(3, 7, 0) >= 0) {  // 3.7.0 and higher
-             return QStringLiteral(":/FirmwarePlugin/APM/APMParameterFactMetaData.Copter.3.7.xml");
+            return QStringLiteral(":/FirmwarePlugin/APM/APMParameterFactMetaData.Copter.3.7.xml");
         }
         if (vehicle->versionCompare(3, 6, 0) >= 0) {  // 3.6.0 and higher
-             return QStringLiteral(":/FirmwarePlugin/APM/APMParameterFactMetaData.Copter.3.6.xml");
+            return QStringLiteral(":/FirmwarePlugin/APM/APMParameterFactMetaData.Copter.3.6.xml");
         }
         return QStringLiteral(":/FirmwarePlugin/APM/APMParameterFactMetaData.Copter.3.5.xml");
 
@@ -925,11 +925,11 @@ void APMFirmwarePlugin::guidedModeChangeAltitude(Vehicle* vehicle, double altitu
 
     MAVLinkProtocol* mavlink = qgcApp()->toolbox()->mavlinkProtocol();
     mavlink_msg_set_position_target_local_ned_encode_chan(
-        static_cast<uint8_t>(mavlink->getSystemId()),
-        static_cast<uint8_t>(mavlink->getComponentId()),
-        vehicle->priorityLink()->mavlinkChannel(),
-        &msg,
-        &cmd);
+                static_cast<uint8_t>(mavlink->getSystemId()),
+                static_cast<uint8_t>(mavlink->getComponentId()),
+                vehicle->priorityLink()->mavlinkChannel(),
+                &msg,
+                &cmd);
 
     vehicle->sendMessageOnLink(vehicle->priorityLink(), msg);
 }
@@ -1058,11 +1058,11 @@ void APMFirmwarePlugin::_handleRCChannels(Vehicle* vehicle, mavlink_message_t* m
     }
     MAVLinkProtocol* mavlink = qgcApp()->toolbox()->mavlinkProtocol();
     mavlink_msg_rc_channels_encode_chan(
-        static_cast<uint8_t>(mavlink->getSystemId()),
-        static_cast<uint8_t>(mavlink->getComponentId()),
-        vehicle->priorityLink()->mavlinkChannel(),
-        message,
-        &channels);
+                static_cast<uint8_t>(mavlink->getSystemId()),
+                static_cast<uint8_t>(mavlink->getComponentId()),
+                vehicle->priorityLink()->mavlinkChannel(),
+                message,
+                &channels);
 }
 
 void APMFirmwarePlugin::_handleRCChannelsRaw(Vehicle* vehicle, mavlink_message_t *message)
@@ -1075,10 +1075,10 @@ void APMFirmwarePlugin::_handleRCChannelsRaw(Vehicle* vehicle, mavlink_message_t
     }
     MAVLinkProtocol* mavlink = qgcApp()->toolbox()->mavlinkProtocol();
     mavlink_msg_rc_channels_raw_encode_chan(
-        static_cast<uint8_t>(mavlink->getSystemId()),
-        static_cast<uint8_t>(mavlink->getComponentId()),
-        vehicle->priorityLink()->mavlinkChannel(),
-        message,
-        &channels);
+                static_cast<uint8_t>(mavlink->getSystemId()),
+                static_cast<uint8_t>(mavlink->getComponentId()),
+                vehicle->priorityLink()->mavlinkChannel(),
+                message,
+                &channels);
 }
 

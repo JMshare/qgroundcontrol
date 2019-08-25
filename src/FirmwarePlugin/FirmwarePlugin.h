@@ -162,7 +162,7 @@ public:
 
     /// Returns true if the vehicle and firmware supports the use of negative thrust
     /// Typically supported rover.
-    virtual bool supportsNegativeThrust(void);
+    virtual bool supportsNegativeThrust(Vehicle *);
 
     /// Returns true if the firmware supports the use of the RC radio and requires the RC radio
     /// setup page. Returns true by default.
@@ -207,6 +207,7 @@ public:
     virtual QString getVersionParam(void) { return QString(); }
 
     /// Returns the parameter set version info pulled from inside the meta data file. -1 if not found.
+    /// Note: The implementation for this must not vary by vehicle type.
     virtual void getParameterMetaDataVersionInfo(const QString& metaDataFile, int& majorVersion, int& minorVersion);
 
     /// Returns the internal resource parameter meta date file.

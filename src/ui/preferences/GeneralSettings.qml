@@ -24,9 +24,8 @@ import QGroundControl.Palette               1.0
 import QGroundControl.Controllers           1.0
 import QGroundControl.SettingsManager       1.0
 
-QGCView {
-    id:                 _qgcView
-    viewPanel:          panel
+Rectangle {
+    id:                 _root
     color:              qgcPal.window
     anchors.fill:       parent
     anchors.margins:    ScreenTools.defaultFontPixelWidth
@@ -42,12 +41,13 @@ QGCView {
     property Fact _mapProvider:                 QGroundControl.settingsManager.flightMapSettings.mapProvider
     property Fact _mapType:                     QGroundControl.settingsManager.flightMapSettings.mapType
     property Fact _followTarget:                QGroundControl.settingsManager.appSettings.followTarget
-    property real _panelWidth:                  _qgcView.width * _internalWidthRatio
+    property real _panelWidth:                  _root.width * _internalWidthRatio
     property real _margins:                     ScreenTools.defaultFontPixelWidth
 
     property string _videoSource:               QGroundControl.settingsManager.videoSettings.videoSource.value
     property bool   _isGst:                     QGroundControl.videoManager.isGStreamer
-    property bool   _isUDP:                     _isGst && _videoSource === QGroundControl.settingsManager.videoSettings.udpVideoSource
+    property bool   _isUDP264:                  _isGst && _videoSource === QGroundControl.settingsManager.videoSettings.udp264VideoSource
+    property bool   _isUDP265:                  _isGst && _videoSource === QGroundControl.settingsManager.videoSettings.udp265VideoSource
     property bool   _isRTSP:                    _isGst && _videoSource === QGroundControl.settingsManager.videoSettings.rtspVideoSource
     property bool   _isTCP:                     _isGst && _videoSource === QGroundControl.settingsManager.videoSettings.tcpVideoSource
     property bool   _isMPEGTS:                  _isGst && _videoSource === QGroundControl.settingsManager.videoSettings.mpegtsVideoSource
@@ -57,12 +57,6 @@ QGCView {
 
     readonly property real _internalWidthRatio: 0.8
 
-    QGCPalette { id: qgcPal }
-
-    QGCViewPanel {
-        id:             panel
-        anchors.fill:   parent
-
         QGCFlickable {
             clip:               true
             anchors.fill:       parent
@@ -71,7 +65,7 @@ QGCView {
 
             Item {
                 id:     outerItem
-                width:  Math.max(panel.width, settingsColumn.width)
+            width:  Math.max(_root.width, settingsColumn.width)
                 height: settingsColumn.height
 
                 ColumnLayout {
@@ -254,7 +248,6 @@ QGCView {
                                     }
                                 }
 
-
                                 FactCheckBox {
                                     text:       qsTr("Mute all audio output")
                                     fact:       _audioMuted
@@ -338,15 +331,12 @@ QGCView {
                             QGCButton {
                                 text:       qsTr("Browse")
                                 onClicked:  savePathBrowseDialog.openForLoad()
-
                                 QGCFileDialog {
                                     id:             savePathBrowseDialog
-                                    qgcView:        _qgcView
                                     title:          qsTr("Choose the location to save/load files")
                                     folder:         _savePath.rawValue
                                     selectExisting: true
                                     selectFolder:   true
-
                                     onAcceptedForLoad: _savePath.rawValue = file
                                 }
                             }
@@ -440,11 +430,19 @@ QGCView {
                             spacing:                    _margins
 
                             FactCheckBox {
-                                text:       qsTr("Use preflight checklist")
+                                text:       qsTr("Use Preflight Checklist")
                                 fact:       _useChecklist
-                                visible:    _useChecklist.visible
+                                visible:    _useChecklist.visible && QGroundControl.corePlugin.options.preFlightChecklistUrl.toString().length
 
                                 property Fact _useChecklist: QGroundControl.settingsManager.appSettings.useChecklist
+                            }
+
+                            FactCheckBox {
+                                text:       qsTr("Show Telemetry Log Replay Status Bar")
+                                fact:       _showLogReplayStatusBar
+                                visible:    _showLogReplayStatusBar.visible
+
+                                property Fact _showLogReplayStatusBar: QGroundControl.settingsManager.flyViewSettings.showLogReplayStatusBar
                             }
 
                             FactCheckBox {
@@ -457,9 +455,7 @@ QGCView {
 
                             FactCheckBox {
                                 text:       qsTr("Auto-Center throttle")
-                                visible:    _virtualJoystickCentralized.visible && (
-                                        QGroundControl.multiVehicleManager.activeVehicle.sub || QGroundControl.multiVehicleManager.activeVehicle.rover
-                                    )
+                                visible:    _virtualJoystickCentralized.visible && activeVehicle && (activeVehicle.sub || activeVehicle.rover)
                                 fact:       _virtualJoystickCentralized
                                 Layout.leftMargin: _margins
 
@@ -660,16 +656,11 @@ QGCView {
                             property bool useFixedPosition: rtkSettings.useFixedBasePosition.rawValue
                             property real firstColWidth:    ScreenTools.defaultFontPixelWidth * 3
 
-                            ExclusiveGroup {
-                                id: useFixedBasePositionRadioGroup
-                            }
-
                             QGCRadioButton {
                                 text:               qsTr("Perform Survey-In")
                                 visible:            rtkGrid.rtkSettings.useFixedBasePosition.visible
-                                checked:            rtkGrid.rtkSettings.useFixedBasePosition.value == false
+                            checked:            rtkGrid.rtkSettings.useFixedBasePosition.value === false
                                 onClicked:          rtkGrid.rtkSettings.useFixedBasePosition.value = false
-                                exclusiveGroup:     useFixedBasePositionRadioGroup
                                 Layout.columnSpan:  3
                             }
 
@@ -702,9 +693,8 @@ QGCView {
                             QGCRadioButton {
                                 text:               qsTr("Use Specified Base Position")
                                 visible:            rtkGrid.rtkSettings.useFixedBasePosition.visible
-                                checked:            rtkGrid.rtkSettings.useFixedBasePosition.value == true
+                            checked:            rtkGrid.rtkSettings.useFixedBasePosition.value === true
                                 onClicked:          rtkGrid.rtkSettings.useFixedBasePosition.value = true
-                                exclusiveGroup:     useFixedBasePositionRadioGroup
                                 Layout.columnSpan:  3
                             }
 
@@ -812,12 +802,12 @@ QGCView {
 
                             QGCLabel {
                                 text:                   qsTr("UDP Port")
-                                visible:                (_isUDP || _isMPEGTS)  && QGroundControl.settingsManager.videoSettings.udpPort.visible
+                                visible:                (_isUDP264 || _isUDP265 || _isMPEGTS)  && QGroundControl.settingsManager.videoSettings.udpPort.visible
                             }
                             FactTextField {
                                 Layout.preferredWidth:  _comboFieldWidth
                                 fact:                   QGroundControl.settingsManager.videoSettings.udpPort
-                                visible:                (_isUDP || _isMPEGTS) && QGroundControl.settingsManager.videoSettings.udpPort.visible
+                                visible:                (_isUDP264 || _isUDP265 || _isMPEGTS) && QGroundControl.settingsManager.videoSettings.udpPort.visible
                             }
 
                             QGCLabel {
@@ -949,15 +939,12 @@ QGCView {
                             QGCButton {
                                 text:       qsTr("Browse")
                                 onClicked:  userBrandImageIndoorBrowseDialog.openForLoad()
-
                                 QGCFileDialog {
                                     id:             userBrandImageIndoorBrowseDialog
-                                    qgcView:        _qgcView
                                     title:          qsTr("Choose custom brand image file")
                                     folder:         _userBrandImageIndoor.rawValue.replace("file:///","")
                                     selectExisting: true
                                     selectFolder:   false
-
                                     onAcceptedForLoad: _userBrandImageIndoor.rawValue = "file:///" + file
                                 }
                             }
@@ -974,24 +961,19 @@ QGCView {
                             QGCButton {
                                 text:       qsTr("Browse")
                                 onClicked:  userBrandImageOutdoorBrowseDialog.openForLoad()
-
                                 QGCFileDialog {
                                     id:             userBrandImageOutdoorBrowseDialog
-                                    qgcView:        _qgcView
                                     title:          qsTr("Choose custom brand image file")
                                     folder:         _userBrandImageOutdoor.rawValue.replace("file:///","")
                                     selectExisting: true
                                     selectFolder:   false
-
                                     onAcceptedForLoad: _userBrandImageOutdoor.rawValue = "file:///" + file
                                 }
                             }
-
                             QGCButton {
                                 text:               qsTr("Reset Default Brand Image")
                                 Layout.columnSpan:  3
                                 Layout.alignment:   Qt.AlignHCenter
-
                                 onClicked:  {
                                     _userBrandImageIndoor.rawValue = ""
                                     _userBrandImageOutdoor.rawValue = ""
@@ -1012,6 +994,5 @@ QGCView {
                     }
                 } // settingsColumn
             }
-        } // QGCFlickable
-    } // QGCViewPanel
-} // QGCView
+    }
+}

@@ -9,7 +9,7 @@
 
 #include "FirmwareUpgradeController.h"
 #include "Bootloader.h"
-#include "QGCQFileDialog.h"
+//-- TODO: #include "QGCQFileDialog.h"
 #include "QGCApplication.h"
 #include "QGCFileDownload.h"
 #include "QGCOptions.h"
@@ -93,12 +93,17 @@ FirmwareUpgradeController::FirmwareUpgradeController(void)
     
     connect(&_eraseTimer, &QTimer::timeout, this, &FirmwareUpgradeController::_eraseProgressTick);
 
+#if !defined(NO_ARDUPILOT_DIALECT)
     connect(_apmChibiOSSetting,     &Fact::rawValueChanged, this, &FirmwareUpgradeController::_buildAPMFirmwareNames);
     connect(_apmVehicleTypeSetting, &Fact::rawValueChanged, this, &FirmwareUpgradeController::_buildAPMFirmwareNames);
+#endif
 
     _initFirmwareHash();
     _determinePX4StableVersion();
+
+#if !defined(NO_ARDUPILOT_DIALECT)
     _downloadArduPilotManifest();
+#endif
 }
 
 FirmwareUpgradeController::~FirmwareUpgradeController()
@@ -293,10 +298,18 @@ void FirmwareUpgradeController::_initFirmwareHash()
         { AutoPilotStackPX4, DeveloperFirmware, DefaultVehicleFirmware, "http://px4-travis.s3.amazonaws.com/Firmware/master/crazyflie_default.px4"},
     };
 
+    //////////////////////////////////// Omnibus F4 SD firmwares //////////////////////////////////////////////////
     FirmwareToUrlElement_t rgOmnibusF4SDFirmwareArray[] = {
         { AutoPilotStackPX4, StableFirmware,    DefaultVehicleFirmware, "http://px4-travis.s3.amazonaws.com/Firmware/stable/omnibus_f4sd_default.px4"},
         { AutoPilotStackPX4, BetaFirmware,      DefaultVehicleFirmware, "http://px4-travis.s3.amazonaws.com/Firmware/beta/omnibus_f4sd_default.px4"},
         { AutoPilotStackPX4, DeveloperFirmware, DefaultVehicleFirmware, "http://px4-travis.s3.amazonaws.com/Firmware/master/omnibus_f4sd_default.px4"},
+    };
+
+    //////////////////////////////////// Kakute F7 firmwares //////////////////////////////////////////////////
+    FirmwareToUrlElement_t rgKakuteF7FirmwareArray[] = {
+        { AutoPilotStackPX4, StableFirmware,    DefaultVehicleFirmware, "http://px4-travis.s3.amazonaws.com/Firmware/stable/holybro_kakutef7_default.px4"},
+        { AutoPilotStackPX4, BetaFirmware,      DefaultVehicleFirmware, "http://px4-travis.s3.amazonaws.com/Firmware/beta/holybro_kakutef7_default.px4"},
+        { AutoPilotStackPX4, DeveloperFirmware, DefaultVehicleFirmware, "http://px4-travis.s3.amazonaws.com/Firmware/master/holybro_kakutef7_default.px4"},
     };
     
     //////////////////////////////////// FMUK66V3 firmwares //////////////////////////////////////////////////
@@ -387,6 +400,12 @@ void FirmwareUpgradeController::_initFirmwareHash()
         _rgOmnibusF4SDFirmware.insert(FirmwareIdentifier(element.stackType, element.firmwareType, element.vehicleType), element.url);
     }
     
+    size = sizeof(rgKakuteF7FirmwareArray)/sizeof(rgKakuteF7FirmwareArray[0]);
+    for (int i = 0; i < size; i++) {
+        const FirmwareToUrlElement_t& element = rgKakuteF7FirmwareArray[i];
+        _rgKakuteF7Firmware.insert(FirmwareIdentifier(element.stackType, element.firmwareType, element.vehicleType), element.url);
+    }
+
     size = sizeof(rgFMUK66V3FirmwareArray)/sizeof(rgFMUK66V3FirmwareArray[0]);
     for (int i = 0; i < size; i++) {
         const FirmwareToUrlElement_t& element = rgFMUK66V3FirmwareArray[i];
@@ -464,6 +483,9 @@ QHash<FirmwareUpgradeController::FirmwareIdentifier, QString>* FirmwareUpgradeCo
     case Bootloader::boardIDOmnibusF4SD:
         _rgFirmwareDynamic = _rgOmnibusF4SDFirmware;
         break;
+    case Bootloader::boardIDKakuteF7:
+        _rgFirmwareDynamic = _rgKakuteF7Firmware;
+        break;
     case Bootloader::boardIDFMUK66V3:
         _rgFirmwareDynamic = _rgFMUK66V3Firmware;
         break;
@@ -478,16 +500,12 @@ QHash<FirmwareUpgradeController::FirmwareIdentifier, QString>* FirmwareUpgradeCo
     return &_rgFirmwareDynamic;
 }
 
-/// @brief Prompts the user to select a firmware file if needed and moves the state machine to the next state.
 void FirmwareUpgradeController::_getFirmwareFile(FirmwareIdentifier firmwareId)
 {
     QHash<FirmwareIdentifier, QString>* prgFirmware = _firmwareHashForBoardId(static_cast<int>(_bootloaderBoardID));
-    
     if (firmwareId.firmwareType == CustomFirmware) {
-        _firmwareFilename = QGCQFileDialog::getOpenFileName(nullptr,                                                                // Parent to main window
-                                                            tr("Select Firmware File"),                                             // Dialog Caption
-                                                            QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation),    // Initial directory
-                                                            tr("Firmware Files (*.px4 *.apj *.bin *.ihx)"));                              // File filter
+        _firmwareFilename = QString();
+        _errorCancel(tr("Custom firmware selected but no filename given."));
     } else {
         if (prgFirmware->contains(firmwareId)) {
             _firmwareFilename = prgFirmware->value(firmwareId);
@@ -673,6 +691,7 @@ void FirmwareUpgradeController::setSelectedFirmwareBuildType(FirmwareBuildType_t
 
 void FirmwareUpgradeController::_buildAPMFirmwareNames(void)
 {
+#if !defined(NO_ARDUPILOT_DIALECT)
     qCDebug(FirmwareUpgradeLog) << "_buildAPMFirmwareNames";
 
     bool                    chibios =       _apmChibiOSSetting->rawValue().toInt() == 0;
@@ -717,6 +736,7 @@ void FirmwareUpgradeController::_buildAPMFirmwareNames(void)
     }
 
     emit apmFirmwareNamesChanged();
+#endif
 }
 
 FirmwareUpgradeController::FirmwareVehicleType_t FirmwareUpgradeController::vehicleTypeFromFirmwareSelectionIndex(int index)
