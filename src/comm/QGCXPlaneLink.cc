@@ -525,7 +525,7 @@ void QGCXPlaneLink::updateActuatorControls(quint64 time, quint64 flags, float ct
         default:
         {
             /* direct pass-through, normal fixed-wing. */
-            p.f[0] = -ctl_1;        ///< X-Plane Elevator
+            p.f[0] = ctl_1;        ///< X-Plane Elevator
             p.f[1] = ctl_0;         ///< X-Plane Aileron
             p.f[2] = ctl_2;         ///< X-Plane Rudder
 
@@ -534,29 +534,22 @@ void QGCXPlaneLink::updateActuatorControls(quint64 time, quint64 flags, float ct
             writeBytesSafe((const char*)&p, sizeof(p));
 
             /* Send throttle to all eight motors */
+            // get (-1 to 1) to (0 to 1)
+            // ctl_3 = (ctl_3 + 1.0f)/2.0f; for the front thrust it's done somewhere already so no need
+            ctl_4 = (ctl_4 + 1.0f)/2.0f;
+            ctl_5 = (ctl_5 + 1.0f)/2.0f;
+
             p.index = 25;
             p.f[0] = ctl_3;
-            p.f[1] = ctl_3;
-            p.f[2] = ctl_3;
+            p.f[1] = ctl_5;
+            p.f[2] = ctl_4;
+
             p.f[3] = ctl_3;
             p.f[4] = ctl_3;
             p.f[5] = ctl_3;
             p.f[6] = ctl_3;
             p.f[7] = ctl_3;
-            p.f[1] = ctl_3 - 0.3f*ctl_0 - 0.3f*ctl_2;
-            p.f[2] = ctl_3 + 0.3f*ctl_0 + 0.3f*ctl_2;
-            if(p.f[1] < 0.0f){
-                p.f[1] = 0.0f;
-            }
-            if(p.f[2] < 0.0f){
-                p.f[2] = 0.0f;
-            }
-            if(p.f[1] > 1.0f){
-                p.f[1] = 1.0f;
-            }
-            if(p.f[2] > 1.0f){
-                p.f[2] = 1.0f;
-            }
+
             writeBytesSafe((const char*)&p, sizeof(p));
 
             /* Send flap signals, assuming that they are mapped to channel 5 (ctl_4) */
