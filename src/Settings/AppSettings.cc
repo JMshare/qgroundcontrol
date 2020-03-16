@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -77,6 +77,7 @@ DECLARE_SETTINGSFACT(AppSettings, defaultMissionItemAltitude)
 DECLARE_SETTINGSFACT(AppSettings, telemetrySave)
 DECLARE_SETTINGSFACT(AppSettings, telemetrySaveNotArmed)
 DECLARE_SETTINGSFACT(AppSettings, audioMuted)
+DECLARE_SETTINGSFACT(AppSettings, checkInternet)
 DECLARE_SETTINGSFACT(AppSettings, virtualJoystick)
 DECLARE_SETTINGSFACT(AppSettings, virtualJoystickCentralized)
 DECLARE_SETTINGSFACT(AppSettings, appFontPointSize)
@@ -84,6 +85,7 @@ DECLARE_SETTINGSFACT(AppSettings, showLargeCompass)
 DECLARE_SETTINGSFACT(AppSettings, savePath)
 DECLARE_SETTINGSFACT(AppSettings, autoLoadMissions)
 DECLARE_SETTINGSFACT(AppSettings, useChecklist)
+DECLARE_SETTINGSFACT(AppSettings, enforceChecklist)
 DECLARE_SETTINGSFACT(AppSettings, mapboxToken)
 DECLARE_SETTINGSFACT(AppSettings, esriToken)
 DECLARE_SETTINGSFACT(AppSettings, defaultFirmwareType)
@@ -95,6 +97,8 @@ DECLARE_SETTINGSFACT(AppSettings, enableTaisyncVideo)
 DECLARE_SETTINGSFACT(AppSettings, enableMicrohard)
 DECLARE_SETTINGSFACT(AppSettings, language)
 DECLARE_SETTINGSFACT(AppSettings, disableAllPersistence)
+DECLARE_SETTINGSFACT(AppSettings, usePairing)
+DECLARE_SETTINGSFACT(AppSettings, saveCsvTelemetry)
 
 DECLARE_SETTINGSFACT_NO_FUNC(AppSettings, indoorPalette)
 {

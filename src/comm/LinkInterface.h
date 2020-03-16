@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2018 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -25,9 +25,8 @@
 class LinkManager;
 
 /**
-* The link interface defines the interface for all links used to communicate
-* with the groundstation application.
-*
+* @brief The link interface defines the interface for all links used to communicate
+* with the ground station application.
 **/
 class LinkInterface : public QThread
 {
@@ -39,7 +38,7 @@ class LinkInterface : public QThread
 public:    
     virtual ~LinkInterface() {
         stopMavlinkMessagesTimer();
-        _config->setLink(NULL);
+        _config->setLink(nullptr);
     }
 
     Q_PROPERTY(bool active      READ active     NOTIFY activeChanged)
@@ -87,7 +86,7 @@ public:
     virtual bool isLogReplay(void) { return false; }
 
     /**
-     * @Enable/Disable data rate collection
+     * @Brief Enable/Disable data rate collection
      **/
     void enableDataRate(bool enable)
     {
@@ -147,8 +146,8 @@ public slots:
      * communication arbitrary byte lengths can be written. The method ensures
      * thread safety regardless of the underlying LinkInterface implementation.
      *
-     * @param bytes The pointer to the byte array containing the data
-     * @param length The length of the data array
+     * @param bytes:  The pointer to the byte array containing the data
+     * @param length: The length of the data array
      **/
     void writeBytesSafe(const char *bytes, int length)
     {
@@ -177,9 +176,21 @@ signals:
      * affect performance, for control links it is however desirable to directly
      * forward the link data.
      *
-     * @param data the new bytes
+     * @param link: Link where the data is coming from
+     * @param data: The data received
      */
     void bytesReceived(LinkInterface* link, QByteArray data);
+
+    /**
+     * @brief New data has been sent
+     * *
+     * The new data is contained in the QByteArray data.
+     * The data is logged into telemetry logging system
+     *
+     * @param link: Link used
+     * @param data: The data sent
+     */
+    void bytesSent(LinkInterface* link, QByteArray data);
 
     /**
      * @brief This signal is emitted instantly when the link is connected

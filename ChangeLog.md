@@ -2,10 +2,53 @@
 
 Note: This file only contains high level features or important fixes.
 
-## 3.6
+## 4.1 - Daily build
 
-### 3.6.0 - Daily Build
+* Support mavlink terrain protocol which queries gcs for terrain height information. Allows planning missions with TERRAIN\_FRAME.
 
+## 4.0
+
+### 4.0.4 - Not yet released
+
+
+### 4.0.3 - Stable
+
+* Plan: Add setting for takeoff item not required
+* Plan: Takeoff item must be added prior to allowing other item types to enable
+* Video: Add low latency mode as optional configuration setting (defaults to false)
+* ArduPilot: Fix generated list of available firmwares
+
+### 4.0.2
+
+* Fix Mavlink V2 protocol negotation based on capability bits
+* Fix waiting for AUTOPILOT_VERSION response to get capability bits
+* ArduPilot: Above two fixes make fence/rally support enabling more reliable
+
+### 4.0.1
+
+* Fix ArduPilot current mission item tracking in Fly view
+* Fix ADSB vehicle display
+* Fix map positioning bug in Plan view
+* Fix Windows 0xcc000007b startup error causes by incorrect VC runtimes being installed.
+
+### 4.0.0
+
+* Added ROI option during manual flight.
+* Windows: Move builds to 64 bit, Qt 5.12.5
+* Plan: ROI button will switch to Cancel ROI at appropriate times
+* Plan: When ROI is selected the flight path lines which are affected by the ROI will change color
+* ADSB: Added support for connecting to SBS server. Adds support for ADSB data from USB SDR Dongle running 'dump1090 --net' for example.
+* Toolbar: Scrollable left/right on small screens like phones
+* Plan View: New create plan UI for initial plan creation
+* New Corridor editing tools ui. Includes ability to trace polyline by clicking.
+* New Polygon editing tools ui. Includes ability to trace polygon by clicking.
+* More performant flight path display algorithm. Mobile builds no longer show limited path length.
+* ArduPilot: Add Motor Test vehicle setup page
+* Compass Instrument: Add indicators for Home, COG and Next Waypoint headings.
+* Log Replay: Support changing speed of playback
+* Basic object avoidance added to vehicles.
+* Added ability to set a joystick button to be single action or repeated action while the button is held down.
+* Rework joysticks. Fixed several issues and updated setup UI.
 * Adding support for UDP RTP h.265 video streams
 * For text to speech engine on Linux to English (all messages are in English)
 * Automated the ingestion of localization from Crowdin
@@ -34,14 +77,26 @@ Note: This file only contains high level features or important fixes.
 * ArduPilot: Support configurable mavlink stream rates. Available from Settings/Mavlink page.
 * Major rewrite and bug fix pass through Structure Scan. Previous version had such bad problems that it can no longer be supported. Plans with Structure Scan will need to be recreated. New QGC will not load old Structure Scan plans.
 
-### 3.5.3 - Stable
+## 3.5
+
+### 3.5.5
+* Fix mavlink message memset which cause wrong commands to be sent on ArduPilot GotoLocation.
+* Disable Pause when fixed wing is on landing approach.
+
+### 3.5.4
+* Update windows drivers
+* Add support for FMUK66 flashing/connection
+* Guard against null geometry coming from gstreamer which can cause crashes
+* Add .apj file selection support to custom firmware flash
+
+### 3.5.3
 * Change minimum RTK Survey-In limit to 0.01 meters
 * Change Windows driver detection logic
 * Fix crash when clicking on GeoFence polygon vertex
 * PX4: Fix missing ```MC_YAW_FF``` parameter in PID Tuning
 * ArduPilot: Fix parameter file save generating bad characters from git hash
 
-### 3.5.2 - Stable
+### 3.5.2
 * Fix Ubuntu AppImage startup failure
 
 ### 3.5.1

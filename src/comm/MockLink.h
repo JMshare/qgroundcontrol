@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2018 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -134,7 +134,8 @@ public:
 
     /// Sets a failure mode for unit testing
     ///     @param failureMode Type of failure to simulate
-    void setMissionItemFailureMode(MockLinkMissionItemHandler::FailureMode_t failureMode);
+    ///     @param failureAckResult Error to send if one the ack error modes
+    void setMissionItemFailureMode(MockLinkMissionItemHandler::FailureMode_t failureMode, MAV_MISSION_RESULT failureAckResult);
 
     /// Called to send a MISSION_ACK message while the MissionManager is in idle state
     void sendUnexpectedMissionAck(MAV_MISSION_RESULT ackType) { _missionItemHandler.sendUnexpectedMissionAck(ackType); }
@@ -196,6 +197,7 @@ private:
     void _sendHomePosition(void);
     void _sendGpsRawInt(void);
     void _sendVibration(void);
+    void _sendSysStatus(void);
     void _sendStatusTextMessages(void);
     void _respondWithAutopilotVersion(void);
     void _sendRCChannels(void);
@@ -225,6 +227,9 @@ private:
     uint8_t     _mavBaseMode;
     uint32_t    _mavCustomMode;
     uint8_t     _mavState;
+
+    QTime       _runningTime;
+    int8_t      _batteryRemaining = 100;
 
     MAV_AUTOPILOT       _firmwareType;
     MAV_TYPE            _vehicleType;

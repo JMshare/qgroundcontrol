@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -23,6 +23,8 @@
 #include "RadioComponentController.h"
 #include "QGCCameraManager.h"
 #include "QGCFileDownload.h"
+#include "SettingsManager.h"
+#include "PlanViewSettings.h"
 
 #include <QDebug>
 
@@ -189,8 +191,6 @@ QString PX4FirmwarePlugin::flightMode(uint8_t base_mode, uint32_t custom_mode) c
             qWarning() << "Unknown flight mode" << custom_mode;
             return tr("Unknown %1:%2").arg(base_mode).arg(custom_mode);
         }
-    } else {
-        qWarning() << "PX4 Flight Stack flight mode without custom mode enabled?";
     }
 
     return flightMode;
@@ -228,10 +228,13 @@ bool PX4FirmwarePlugin::setFlightMode(const QString& flightMode, uint8_t* base_m
 bool PX4FirmwarePlugin::isCapable(const Vehicle *vehicle, FirmwareCapabilities capabilities)
 {
     int available = SetFlightModeCapability | PauseVehicleCapability | GuidedModeCapability;
+    //-- This is arbitrary until I find how to really tell if ROI is avaiable
+    if (vehicle->multiRotor()) {
+        available |= ROIModeCapability;
+    }
     if (vehicle->multiRotor() || vehicle->vtol()) {
         available |= TakeoffVehicleCapability | OrbitModeCapability;
     }
-
     return (capabilities & available) == capabilities;
 }
 
@@ -278,7 +281,7 @@ void PX4FirmwarePlugin::getParameterMetaDataVersionInfo(const QString& metaDataF
 
 QList<MAV_CMD> PX4FirmwarePlugin::supportedMissionCommands(void)
 {
-    return {
+    QList<MAV_CMD> cmds = {
         MAV_CMD_NAV_WAYPOINT,
         MAV_CMD_NAV_LOITER_UNLIM, MAV_CMD_NAV_LOITER_TIME, MAV_CMD_NAV_LOITER_TO_ALT,
         MAV_CMD_NAV_LAND, MAV_CMD_NAV_TAKEOFF, MAV_CMD_NAV_RETURN_TO_LAUNCH,
@@ -297,6 +300,12 @@ QList<MAV_CMD> PX4FirmwarePlugin::supportedMissionCommands(void)
         MAV_CMD_NAV_DELAY,
         MAV_CMD_CONDITION_YAW,
     };
+
+    if (qgcApp()->toolbox()->settingsManager()->planViewSettings()->useConditionGate()->rawValue().toBool()) {
+        cmds.append(MAV_CMD_CONDITION_GATE);
+    }
+
+    return cmds;
 }
 
 QString PX4FirmwarePlugin::missionCommandOverrides(MAV_TYPE vehicleType) const
@@ -360,7 +369,7 @@ void PX4FirmwarePlugin::_mavCommandResult(int vehicleId, int component, int comm
     Q_UNUSED(component);
     Q_UNUSED(noReponseFromVehicle);
 
-    Vehicle* vehicle = dynamic_cast<Vehicle*>(sender());
+    auto* vehicle = qobject_cast<Vehicle*>(sender());
     if (!vehicle) {
         qWarning() << "Dynamic cast failed!";
         return;
@@ -473,14 +482,13 @@ void PX4FirmwarePlugin::guidedModeChangeAltitude(Vehicle* vehicle, double altitu
 
 void PX4FirmwarePlugin::startMission(Vehicle* vehicle)
 {
-
     if (_setFlightModeAndValidate(vehicle, missionFlightMode())) {
         if (!_armVehicleAndValidate(vehicle)) {
             qgcApp()->showMessage(tr("Unable to start mission: Vehicle rejected arming."));
             return;
         }
     } else {
-        qgcApp()->showMessage(tr("Unable to start mission: Vehicle not ready."));
+        qgcApp()->showMessage(tr("Unable to start mission: Vehicle not changing to %1 flight mode.").arg(missionFlightMode()));
     }
 }
 
@@ -520,7 +528,7 @@ void PX4FirmwarePlugin::_handleAutopilotVersion(Vehicle* vehicle, mavlink_messag
 {
     Q_UNUSED(vehicle);
 
-    PX4FirmwarePluginInstanceData* instanceData = qobject_cast<PX4FirmwarePluginInstanceData*>(vehicle->firmwarePluginInstanceData());
+    auto* instanceData = qobject_cast<PX4FirmwarePluginInstanceData*>(vehicle->firmwarePluginInstanceData());
     if (!instanceData->versionNotified) {
         bool notifyUser = false;
         int supportedMajorVersion = 1;
@@ -555,19 +563,6 @@ void PX4FirmwarePlugin::_handleAutopilotVersion(Vehicle* vehicle, mavlink_messag
             qgcApp()->showMessage(tr("QGroundControl supports PX4 Pro firmware Version %1.%2.%3 and above. You are using a version prior to that which will lead to unpredictable results. Please upgrade your firmware.").arg(supportedMajorVersion).arg(supportedMinorVersion).arg(supportedPatchVersion));
         }
     }
-}
-
-bool PX4FirmwarePlugin::vehicleYawsToNextWaypointInMission(const Vehicle* vehicle) const
-{
-    if (vehicle->isOfflineEditingVehicle()) {
-        return FirmwarePlugin::vehicleYawsToNextWaypointInMission(vehicle);
-    } else {
-        if (vehicle->multiRotor() && vehicle->parameterManager()->parameterExists(FactSystem::defaultComponentId, QStringLiteral("MIS_YAWMODE"))) {
-            Fact* yawMode = vehicle->parameterManager()->getParameter(FactSystem::defaultComponentId, QStringLiteral("MIS_YAWMODE"));
-            return yawMode && yawMode->rawValue().toInt() == 1;
-        }
-    }
-    return true;
 }
 
 uint32_t PX4FirmwarePlugin::highLatencyCustomModeTo32Bits(uint16_t hlCustomMode)

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -229,6 +229,7 @@ Your vehicle will also be restarted in order to complete the process.")
                                 anchors.left:       parent.left
                                 anchors.right:      parent.right
                                 model:              modelData.airframes
+                                textRole:           "text"
 
                                 Component.onCompleted: {
                                     if (airframeCheckBox.checked) {

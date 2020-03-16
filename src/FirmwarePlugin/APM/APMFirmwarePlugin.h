@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -17,6 +17,7 @@
 #include "FirmwarePlugin.h"
 #include "QGCLoggingCategory.h"
 #include "APMParameterMetaData.h"
+#include "FollowMe.h"
 
 #include <QAbstractSocket>
 
@@ -104,12 +105,13 @@ public:
     QObject*            loadParameterMetaData           (const QString& metaDataFile) override;
     QString             brandImageIndoor                (const Vehicle* vehicle) const override { Q_UNUSED(vehicle); return QStringLiteral("/qmlimages/APM/BrandImage"); }
     QString             brandImageOutdoor               (const Vehicle* vehicle) const override { Q_UNUSED(vehicle); return QStringLiteral("/qmlimages/APM/BrandImage"); }
-    bool                supportsTerrainFrame            (void) const override { return true; }
 
 protected:
     /// All access to singleton is through stack specific implementation
     APMFirmwarePlugin(void);
-    void setSupportedModes(QList<APMCustomMode> supportedModes);
+
+    void setSupportedModes  (QList<APMCustomMode> supportedModes);
+    void _sendGCSMotionReport(Vehicle* vehicle, FollowMe::GCSMotionReport& motionReport, uint8_t estimatationCapabilities);
 
     bool                _coaxialMotors;
 
@@ -148,7 +150,7 @@ class APMFirmwarePluginInstanceData : public QObject
     Q_OBJECT
 
 public:
-    APMFirmwarePluginInstanceData(QObject* parent = NULL);
+    APMFirmwarePluginInstanceData(QObject* parent = nullptr);
 
     bool                    textSeverityAdjustmentNeeded;
 };

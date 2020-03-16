@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -42,9 +42,9 @@ class MissionCmdParamInfo : public QObject {
     Q_OBJECT
 
 public:
-    MissionCmdParamInfo(QObject* parent = NULL);
+    MissionCmdParamInfo(QObject* parent = nullptr);
 
-    MissionCmdParamInfo(const MissionCmdParamInfo& other, QObject* parent = NULL);
+    MissionCmdParamInfo(const MissionCmdParamInfo& other, QObject* parent = nullptr);
     const MissionCmdParamInfo& operator=(const MissionCmdParamInfo& other);
 
     Q_PROPERTY(int          decimalPlaces   READ decimalPlaces  CONSTANT)
@@ -105,9 +105,9 @@ class MissionCommandUIInfo : public QObject {
     Q_OBJECT
 
 public:
-    MissionCommandUIInfo(QObject* parent = NULL);
+    MissionCommandUIInfo(QObject* parent = nullptr);
 
-    MissionCommandUIInfo(const MissionCommandUIInfo& other, QObject* parent = NULL);
+    MissionCommandUIInfo(const MissionCommandUIInfo& other, QObject* parent = nullptr);
     const MissionCommandUIInfo& operator=(const MissionCommandUIInfo& other);
 
     Q_PROPERTY(QString  category                READ category               CONSTANT)

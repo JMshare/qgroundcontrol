@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -16,46 +16,25 @@
 #include "QGCApplication.h"
 #include "JsonHelper.h"
 #include "TerrainQuery.h"
+#include "TakeoffMissionItem.h"
+#include "PlanMasterController.h"
 
 const char* VisualMissionItem::jsonTypeKey =                "type";
 const char* VisualMissionItem::jsonTypeSimpleItemValue =    "SimpleItem";
 const char* VisualMissionItem::jsonTypeComplexItemValue =   "ComplexItem";
 
-VisualMissionItem::VisualMissionItem(Vehicle* vehicle, bool flyView, QObject* parent)
-    : QObject                   (parent)
-    , _vehicle                  (vehicle)
-    , _flyView                  (flyView)
-    , _isCurrentItem            (false)
-    , _dirty                    (false)
-    , _homePositionSpecialCase  (false)
-    , _terrainAltitude          (qQNaN())
-    , _altDifference            (0.0)
-    , _altPercent               (0.0)
-    , _terrainPercent           (qQNaN())
-    , _terrainCollision         (false)
-    , _azimuth                  (0.0)
-    , _distance                 (0.0)
-    , _missionGimbalYaw         (qQNaN())
-    , _missionVehicleYaw        (qQNaN())
-    , _lastLatTerrainQuery      (0)
-    , _lastLonTerrainQuery      (0)
+VisualMissionItem::VisualMissionItem(PlanMasterController* masterController, bool flyView, QObject* parent)
+    : QObject           (parent)
+    , _flyView          (flyView)
+    , _masterController (masterController)
+    , _controllerVehicle(masterController->controllerVehicle())
 {
     _commonInit();
 }
 
 VisualMissionItem::VisualMissionItem(const VisualMissionItem& other, bool flyView, QObject* parent)
     : QObject                   (parent)
-    , _vehicle                  (nullptr)
     , _flyView                  (flyView)
-    , _isCurrentItem            (false)
-    , _dirty                    (false)
-    , _homePositionSpecialCase  (false)
-    , _altDifference            (0.0)
-    , _altPercent               (0.0)
-    , _terrainPercent           (qQNaN())
-    , _terrainCollision         (false)
-    , _azimuth                  (0.0)
-    , _distance                 (0.0)
 {
     *this = other;
 
@@ -65,7 +44,8 @@ VisualMissionItem::VisualMissionItem(const VisualMissionItem& other, bool flyVie
 void VisualMissionItem::_commonInit(void)
 {
     // Don't get terrain altitude information for submarines or boats
-    if (_vehicle->vehicleType() != MAV_TYPE_SUBMARINE && _vehicle->vehicleType() != MAV_TYPE_SURFACE_BOAT) {
+    Vehicle* controllerVehicle = _masterController->controllerVehicle();
+    if (controllerVehicle->vehicleType() != MAV_TYPE_SUBMARINE && controllerVehicle->vehicleType() != MAV_TYPE_SURFACE_BOAT) {
         _updateTerrainTimer.setInterval(500);
         _updateTerrainTimer.setSingleShot(true);
         connect(&_updateTerrainTimer, &QTimer::timeout, this, &VisualMissionItem::_reallyUpdateTerrainAltitude);
@@ -76,7 +56,8 @@ void VisualMissionItem::_commonInit(void)
 
 const VisualMissionItem& VisualMissionItem::operator=(const VisualMissionItem& other)
 {
-    _vehicle = other._vehicle;
+    _masterController = other._masterController;
+    _controllerVehicle = other._controllerVehicle;
 
     setIsCurrentItem(other._isCurrentItem);
     setDirty(other._dirty);
@@ -100,6 +81,14 @@ void VisualMissionItem::setIsCurrentItem(bool isCurrentItem)
     if (_isCurrentItem != isCurrentItem) {
         _isCurrentItem = isCurrentItem;
         emit isCurrentItemChanged(isCurrentItem);
+    }
+}
+
+void VisualMissionItem::setHasCurrentChildItem(bool hasCurrentChildItem)
+{
+    if (_hasCurrentChildItem != hasCurrentChildItem) {
+        _hasCurrentChildItem = hasCurrentChildItem;
+        emit hasCurrentChildItemChanged(hasCurrentChildItem);
     }
 }
 
@@ -157,7 +146,7 @@ void VisualMissionItem::setMissionFlightStatus(MissionController::MissionFlightS
     if (qIsNaN(_missionFlightStatus.gimbalYaw) && qIsNaN(_missionGimbalYaw)) {
         return;
     }
-    if (_missionFlightStatus.gimbalYaw != _missionGimbalYaw) {
+    if (!qFuzzyCompare(_missionFlightStatus.gimbalYaw, _missionGimbalYaw)) {
         _missionGimbalYaw = _missionFlightStatus.gimbalYaw;
         emit missionGimbalYawChanged(_missionGimbalYaw);
     }
@@ -177,16 +166,18 @@ void VisualMissionItem::_updateTerrainAltitude(void)
         // This is an intermediate state we don't react to
         return;
     }
-    if (!_flyView && coordinate().isValid()) {
+    if (!_flyView && specifiesCoordinate() && coordinate().isValid()) {
         // We use a timer so that any additional requests before the timer fires result in only a single request
         _updateTerrainTimer.start();
+    } else {
+        _terrainAltitude = qQNaN();
     }
 }
 
 void VisualMissionItem::_reallyUpdateTerrainAltitude(void)
 {
     QGeoCoordinate coord = coordinate();
-    if (coord.isValid() && (qIsNaN(_terrainAltitude) || !qFuzzyCompare(_lastLatTerrainQuery, coord.latitude()) || qFuzzyCompare(_lastLonTerrainQuery, coord.longitude()))) {
+    if (specifiesCoordinate() && coord.isValid() && (qIsNaN(_terrainAltitude) || !qFuzzyCompare(_lastLatTerrainQuery, coord.latitude()) || qFuzzyCompare(_lastLonTerrainQuery, coord.longitude()))) {
         _lastLatTerrainQuery = coord.latitude();
         _lastLonTerrainQuery = coord.longitude();
         TerrainAtCoordinateQuery* terrain = new TerrainAtCoordinateQuery(this);
@@ -212,3 +203,18 @@ void VisualMissionItem::_setBoundingCube(QGCGeoBoundingCube bc)
     }
 }
 
+void VisualMissionItem::setWizardMode(bool wizardMode)
+{
+    if (wizardMode != _wizardMode) {
+        _wizardMode = wizardMode;
+        emit wizardModeChanged(_wizardMode);
+    }
+}
+
+void VisualMissionItem::setParentItem(VisualMissionItem* parentItem)
+{
+    if (_parentItem != parentItem) {
+        _parentItem = parentItem;
+        emit parentItemChanged(parentItem);
+    }
+}

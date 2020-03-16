@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -12,14 +12,14 @@
 #include "CameraSpec.h"
 #include "SettingsFact.h"
 
-class Vehicle;
+class PlanMasterController;
 
 class CameraCalc : public CameraSpec
 {
     Q_OBJECT
 
 public:
-    CameraCalc(Vehicle* vehicle, const QString& settingsGroup, QObject* parent = NULL);
+    CameraCalc(PlanMasterController* masterController, const QString& settingsGroup, QObject* parent = nullptr);
 
     Q_PROPERTY(QString          customCameraName            READ customCameraName                                               CONSTANT)                                   ///< Camera name for custom camera setting
     Q_PROPERTY(QString          manualCameraName            READ manualCameraName                                               CONSTANT)                                   ///< Camera name for manual camera setting
@@ -70,7 +70,7 @@ public:
     void setDistanceToSurfaceRelative   (bool distanceToSurfaceRelative);
 
     void save(QJsonObject& json) const;
-    bool load(const QJsonObject& json, bool forPresets, bool cameraSpecInPreset, QString& errorString);
+    bool load(const QJsonObject& json, QString& errorString);
 
     static const char* cameraNameName;
     static const char* valueSetIsDistanceName;
@@ -97,7 +97,6 @@ private slots:
     void _cameraNameChanged                 (void);
 
 private:
-    Vehicle*        _vehicle;
     bool            _dirty;
     bool            _disableRecalc;
     bool            _distanceToSurfaceRelative;

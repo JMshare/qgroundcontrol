@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -20,12 +20,14 @@
 
 Q_DECLARE_LOGGING_CATEGORY(TransectStyleComplexItemLog)
 
+class PlanMasterController;
+
 class TransectStyleComplexItem : public ComplexMissionItem
 {
     Q_OBJECT
 
 public:
-    TransectStyleComplexItem(Vehicle* vehicle, bool flyView, QString settignsGroup, QObject* parent);
+    TransectStyleComplexItem(PlanMasterController* masterController, bool flyView, QString settignsGroup, QObject* parent);
 
     Q_PROPERTY(QGCMapPolygon*   surveyAreaPolygon           READ surveyAreaPolygon                                  CONSTANT)
     Q_PROPERTY(CameraCalc*      cameraCalc                  READ cameraCalc                                         CONSTANT)
@@ -72,6 +74,9 @@ public:
     bool    hoverAndCaptureEnabled  (void) const { return hoverAndCapture()->rawValue().toBool(); }
     bool    triggerCamera           (void) const { return triggerDistance() != 0; }
 
+    // Used internally only by unit tests
+    int _transectCount(void) const { return _transects.count(); }
+
     // Overrides from ComplexMissionItem
 
     int                 lastSequenceNumber  (void) const final;
@@ -85,7 +90,7 @@ public:
 
     void            save                    (QJsonArray&  planItems) override = 0;
     bool            specifiesCoordinate     (void) const override = 0;
-    void            appendMissionItems      (QList<MissionItem*>& items, QObject* missionItemParent) override = 0;
+    void            appendMissionItems      (QList<MissionItem*>& items, QObject* missionItemParent) final;
     void            applyNewAltitude        (double newAltitude) override = 0;
 
     bool            dirty                   (void) const final { return _dirty; }
@@ -99,7 +104,7 @@ public:
     double          specifiedGimbalYaw      (void) final { return std::numeric_limits<double>::quiet_NaN(); }
     double          specifiedGimbalPitch    (void) final { return std::numeric_limits<double>::quiet_NaN(); }
     void            setMissionFlightStatus  (MissionController::MissionFlightStatus_t& missionFlightStatus) final;
-    bool            readyForSave            (void) const override;
+    ReadyForSaveState readyForSaveState     (void) const override;
     QString         commandDescription      (void) const override { return tr("Transect"); }
     QString         commandName             (void) const override { return tr("Transect"); }
     QString         abbreviation            (void) const override { return tr("T"); }
@@ -146,7 +151,14 @@ protected:
     void    _setCameraShots                 (int cameraShots);
     double  _triggerDistance                (void) const;
     bool    _hasTurnaround                  (void) const;
-    double  _turnaroundDistance             (void) const;
+    double  _turnAroundDistance             (void) const;
+    void    _appendWaypoint                 (QList<MissionItem*>& items, QObject* missionItemParent, int& seqNum, MAV_FRAME mavFrame, float holdTime, const QGeoCoordinate& coordinate);
+    void    _appendSinglePhotoCapture       (QList<MissionItem*>& items, QObject* missionItemParent, int& seqNum);
+    void    _appendConditionGate            (QList<MissionItem*>& items, QObject* missionItemParent, int& seqNum, MAV_FRAME mavFrame, const QGeoCoordinate& coordinate);
+    void    _appendCameraTriggerDistance    (QList<MissionItem*>& items, QObject* missionItemParent, int& seqNum, float triggerDistance);
+    void    _appendCameraTriggerDistanceUpdatePoint(QList<MissionItem*>& items, QObject* missionItemParent, int& seqNum, MAV_FRAME mavFrame, const QGeoCoordinate& coordinate, bool useConditionGate, float triggerDistance);
+    void    _buildAndAppendMissionItems     (QList<MissionItem*>& items, QObject* missionItemParent);
+    void    _appendLoadedMissionItems       (QList<MissionItem*>& items, QObject* missionItemParent);
 
     int                 _sequenceNumber;
     QGeoCoordinate      _coordinate;
@@ -157,8 +169,9 @@ protected:
         CoordTypeInterior,              ///< Interior waypoint for flight path only
         CoordTypeInteriorHoverTrigger,  ///< Interior waypoint for hover and capture trigger
         CoordTypeInteriorTerrainAdded,  ///< Interior waypoint added for terrain
-        CoordTypeSurveyEdge,            ///< Waypoint at edge of survey polygon
-        CoordTypeTurnaround             ///< Waypoint outside of survey polygon for turnaround
+        CoordTypeSurveyEntry,           ///< Waypoint at entry edge of survey polygon
+        CoordTypeSurveyExit,            ///< Waypoint at exit edge of survey polygon
+        CoordTypeTurnaround,            ///< First turnaround waypoint
     };
 
     typedef struct {
@@ -200,11 +213,13 @@ protected:
     static const char* _jsonFollowTerrainKey;
     static const char* _jsonCameraShotsKey;
 
-    static const int _terrainQueryTimeoutMsecs;
+    static const int _terrainQueryTimeoutMsecs=     1000;
+    static const int _hoverAndCaptureDelaySeconds = 4;
 
 private slots:
     void _reallyQueryTransectsPathHeightInfo(void);
     void _followTerrainChanged              (bool followTerrain);
+    void _handleHoverAndCaptureEnabled      (QVariant enabled);
 
 private:
     void    _queryTransectsPathHeightInfo   (void);

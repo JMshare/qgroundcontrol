@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -53,19 +53,19 @@ void FactGroup::_setupTimer()
 
 Fact* FactGroup::getFact(const QString& name)
 {
-    Fact* fact = NULL;
+    Fact* fact = nullptr;
 
     if (name.contains(".")) {
         QStringList parts = name.split(".");
         if (parts.count() != 2) {
             qWarning() << "Only single level of hierarchy supported";
-            return NULL;
+            return nullptr;
         }
 
         FactGroup * factGroup = getFactGroup(parts[0]);
         if (!factGroup) {
             qWarning() << "Unknown FactGroup" << parts[0];
-            return NULL;
+            return nullptr;
         }
 
         return factGroup->getFact(parts[1]);
@@ -83,7 +83,7 @@ Fact* FactGroup::getFact(const QString& name)
 
 FactGroup* FactGroup::getFactGroup(const QString& name)
 {
-    FactGroup* factGroup = NULL;
+    FactGroup* factGroup = nullptr;
 
     if (_nameToFactGroupMap.contains(name)) {
         factGroup = _nameToFactGroupMap[name];

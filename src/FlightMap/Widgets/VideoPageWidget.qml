@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -33,7 +33,7 @@ Item {
     property bool   _communicationLost:     activeVehicle ? activeVehicle.connectionLost : false
     property var    _videoReceiver:         QGroundControl.videoManager.videoReceiver
     property bool   _recordingVideo:        _videoReceiver && _videoReceiver.recording
-    property bool   _videoRunning:          _videoReceiver && _videoReceiver.videoRunning
+    property bool   _decodingVideo:         _videoReceiver && _videoReceiver.decoding
     property bool   _streamingEnabled:      QGroundControl.settingsManager.videoSettings.streamConfigured
     property var    _dynamicCameras:        activeVehicle ? activeVehicle.dynamicCameras : null
     property int    _curCameraIndex:        _dynamicCameras ? _dynamicCameras.currentCamera : 0
@@ -99,20 +99,29 @@ Item {
         //-- Video Fit
         QGCLabel {
             text:               qsTr("Video Screen Fit")
-            visible:            !_camera || !_camera.autoStream
+            visible:            QGroundControl.videoManager.isGStreamer
             font.pointSize:     ScreenTools.smallFontPointSize
         }
         FactComboBox {
             fact:               QGroundControl.settingsManager.videoSettings.videoFit
-            visible:            !_camera || !_camera.autoStream
+            visible:            QGroundControl.videoManager.isGStreamer
             indexModel:         false
             Layout.alignment:   Qt.AlignHCenter
+        }
+        QGCLabel {
+            text: qsTr("File Name");
+            visible: QGroundControl.videoManager.isGStreamer
+        }
+        TextField {
+            id: videoFileName
+            visible: QGroundControl.videoManager.isGStreamer
+            width: 100
         }
         //-- Video Recording
         QGCLabel {
            text:            _recordingVideo ? qsTr("Stop Recording") : qsTr("Record Stream")
            font.pointSize:  ScreenTools.smallFontPointSize
-           visible:         (!_camera || !_camera.autoStream) && QGroundControl.settingsManager.videoSettings.showRecControl.rawValue
+           visible:         QGroundControl.videoManager.isGStreamer
         }
         // Button to start/stop video recording
         Item {
@@ -120,14 +129,14 @@ Item {
             height:             ScreenTools.defaultFontPixelHeight * 2
             width:              height
             Layout.alignment:   Qt.AlignHCenter
-            visible:            (!_camera || !_camera.autoStream) && QGroundControl.settingsManager.videoSettings.showRecControl.rawValue
+            visible:            QGroundControl.videoManager.isGStreamer
             Rectangle {
                 id:                 recordBtnBackground
                 anchors.top:        parent.top
                 anchors.bottom:     parent.bottom
                 width:              height
                 radius:             _recordingVideo ? 0 : height
-                color:              (_videoRunning && _streamingEnabled) ? "red" : "gray"
+                color:              (_decodingVideo && _streamingEnabled) ? "red" : "gray"
                 SequentialAnimation on opacity {
                     running:        _recordingVideo
                     loops:          Animation.Infinite
@@ -148,14 +157,14 @@ Item {
             }
             MouseArea {
                 anchors.fill:   parent
-                enabled:        _videoRunning && _streamingEnabled
+                enabled:        _decodingVideo && _streamingEnabled
                 onClicked: {
                     if (_recordingVideo) {
-                        _videoReceiver.stopRecording()
+                        QGroundControl.videoManager.stopRecording()
                         // reset blinking animation
                         recordBtnBackground.opacity = 1
                     } else {
-                        _videoReceiver.startRecording()
+                        QGroundControl.videoManager.startRecording(videoFileName.text)
                     }
                 }
             }

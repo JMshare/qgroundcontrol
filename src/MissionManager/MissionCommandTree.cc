@@ -1,7 +1,7 @@
 
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -24,7 +24,7 @@
 MissionCommandTree::MissionCommandTree(QGCApplication* app, QGCToolbox* toolbox, bool unitTest)
     : QGCTool(app, toolbox)
     , _allCommandsCategory(tr("All commands"))
-    , _settingsManager(NULL)
+    , _settingsManager(nullptr)
     , _unitTest(unitTest)
 {
 }
@@ -219,7 +219,7 @@ const MissionCommandUIInfo* MissionCommandTree::getUIInfo(Vehicle* vehicle, MAV_
     }
 }
 
-QVariantList MissionCommandTree::getCommandsForCategory(Vehicle* vehicle, const QString& category)
+QVariantList MissionCommandTree::getCommandsForCategory(Vehicle* vehicle, const QString& category, bool showFlyThroughCommands)
 {
     MAV_AUTOPILOT   baseFirmwareType;
     MAV_TYPE        baseVehicleType;
@@ -237,7 +237,8 @@ QVariantList MissionCommandTree::getCommandsForCategory(Vehicle* vehicle, const 
     for (MAV_CMD command: commandMap.keys()) {
         if (supportedCommands.contains(command)) {
             MissionCommandUIInfo* uiInfo = commandMap[command];
-            if (uiInfo->category() == category || category == _allCommandsCategory) {
+            if ((uiInfo->category() == category || category == _allCommandsCategory) &&
+                    (showFlyThroughCommands || !uiInfo->specifiesCoordinate() || uiInfo->isStandaloneCoordinate())) {
                 list.append(QVariant::fromValue(uiInfo));
             }
         }

@@ -1,6 +1,6 @@
  /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -30,6 +30,10 @@
 #include "QGCOptions.h"
 #include "SettingsManager.h"
 #include "QGCApplication.h"
+#include "ADSBVehicleManager.h"
+#if defined(QGC_ENABLE_PAIRING)
+#include "PairingManager.h"
+#endif
 #if defined(QGC_AIRMAP_ENABLED)
 #include "AirMapManager.h"
 #else
@@ -70,6 +74,10 @@ QGCToolbox::QGCToolbox(QGCApplication* app)
     _followMe               = new FollowMe                  (app, this);
     _videoManager           = new VideoManager              (app, this);
     _mavlinkLogManager      = new MAVLinkLogManager         (app, this);
+    _adsbVehicleManager     = new ADSBVehicleManager        (app, this);
+#if defined(QGC_ENABLE_PAIRING)
+    _pairingManager         = new PairingManager            (app, this);
+#endif
     //-- Airmap Manager
     //-- This should be "pluggable" so an arbitrary AirSpace manager can be used
     //-- For now, we instantiate the one and only AirMap provider
@@ -110,11 +118,15 @@ void QGCToolbox::setChildToolboxes(void)
     _videoManager->setToolbox(this);
     _mavlinkLogManager->setToolbox(this);
     _airspaceManager->setToolbox(this);
+    _adsbVehicleManager->setToolbox(this);
 #if defined(QGC_GST_TAISYNC_ENABLED)
     _taisyncManager->setToolbox(this);
 #endif
 #if defined(QGC_GST_MICROHARD_ENABLED)
     _microhardManager->setToolbox(this);
+#endif
+#if defined(QGC_ENABLE_PAIRING)
+    _pairingManager->setToolbox(this);
 #endif
 }
 

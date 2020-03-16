@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2017 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -60,7 +60,7 @@ class TerrainAirMapQuery : public TerrainQueryInterface {
     Q_OBJECT
 
 public:
-    TerrainAirMapQuery(QObject* parent = NULL);
+    TerrainAirMapQuery(QObject* parent = nullptr);
 
     // Overrides from TerrainQueryInterface
     void requestCoordinateHeights   (const QList<QGeoCoordinate>& coordinates) final;
@@ -95,7 +95,7 @@ class TerrainOfflineAirMapQuery : public TerrainQueryInterface {
     Q_OBJECT
 
 public:
-    TerrainOfflineAirMapQuery(QObject* parent = NULL);
+    TerrainOfflineAirMapQuery(QObject* parent = nullptr);
 
     // Overrides from TerrainQueryInterface
     void requestCoordinateHeights(const QList<QGeoCoordinate>& coordinates) final;
@@ -115,8 +115,9 @@ class TerrainTileManager : public QObject {
 public:
     TerrainTileManager(void);
 
-    void addCoordinateQuery (TerrainOfflineAirMapQuery* terrainQueryInterface, const QList<QGeoCoordinate>& coordinates);
-    void addPathQuery       (TerrainOfflineAirMapQuery* terrainQueryInterface, const QGeoCoordinate& startPoint, const QGeoCoordinate& endPoint);
+    void addCoordinateQuery         (TerrainOfflineAirMapQuery* terrainQueryInterface, const QList<QGeoCoordinate>& coordinates);
+    void addPathQuery               (TerrainOfflineAirMapQuery* terrainQueryInterface, const QGeoCoordinate& startPoint, const QGeoCoordinate& endPoint);
+    bool getAltitudesForCoordinates (const QList<QGeoCoordinate>& coordinates, QList<double>& altitudes, bool& error);
 
 private slots:
     void _terrainDone       (QByteArray responseBytes, QNetworkReply::NetworkError error);
@@ -141,7 +142,6 @@ private:
     } QueuedRequestInfo_t;
 
     void    _tileFailed                         (void);
-    bool    _getAltitudesForCoordinates         (const QList<QGeoCoordinate>& coordinates, QList<double>& altitudes, bool& error);
     QString _getTileHash                        (const QGeoCoordinate& coordinate);
 
     QList<QueuedRequestInfo_t>  _requestQueue;
@@ -200,12 +200,17 @@ class TerrainAtCoordinateQuery : public QObject
 {
     Q_OBJECT
 public:
-    TerrainAtCoordinateQuery(QObject* parent = NULL);
+    TerrainAtCoordinateQuery(QObject* parent = nullptr);
 
     /// Async terrain query for a list of lon,lat coordinates. When the query is done, the terrainData() signal
     /// is emitted.
     ///     @param coordinates to query
     void requestData(const QList<QGeoCoordinate>& coordinates);
+
+    /// Either returns altitudes from cache or queues database request
+    ///     @param[out] error true: altitude not returned due to error, false: altitudes returned
+    /// @return true: altitude returned (check error as well), false: database query queued (altitudes not returned)
+    static bool getAltitudesForCoordinates(const QList<QGeoCoordinate>& coordinates, QList<double>& altitudes, bool& error);
 
     // Internal method
     void _signalTerrainData(bool success, QList<double>& heights);
@@ -219,7 +224,7 @@ class TerrainPathQuery : public QObject
     Q_OBJECT
 
 public:
-    TerrainPathQuery(QObject* parent = NULL);
+    TerrainPathQuery(QObject* parent = nullptr);
 
     /// Async terrain query for terrain heights between two lat/lon coordinates. When the query is done, the terrainData() signal
     /// is emitted.
@@ -250,7 +255,7 @@ class TerrainPolyPathQuery : public QObject
     Q_OBJECT
 
 public:
-    TerrainPolyPathQuery(QObject* parent = NULL);
+    TerrainPolyPathQuery(QObject* parent = nullptr);
 
     /// Async terrain query for terrain heights for the paths between each specified QGeoCoordinate.
     /// When the query is done, the terrainData() signal is emitted.
@@ -278,7 +283,7 @@ class TerrainCarpetQuery : public QObject
     Q_OBJECT
 
 public:
-    TerrainCarpetQuery(QObject* parent = NULL);
+    TerrainCarpetQuery(QObject* parent = nullptr);
 
     /// Async terrain query for terrain information bounded by the specifed corners.
     /// When the query is done, the terrainData() signal is emitted.

@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -37,20 +37,18 @@ const char* TransectStyleComplexItem::_jsonItemsKey =                       "Ite
 const char* TransectStyleComplexItem::_jsonFollowTerrainKey =               "FollowTerrain";
 const char* TransectStyleComplexItem::_jsonCameraShotsKey =                 "CameraShots";
 
-const int   TransectStyleComplexItem::_terrainQueryTimeoutMsecs =           1000;
-
-TransectStyleComplexItem::TransectStyleComplexItem(Vehicle* vehicle, bool flyView, QString settingsGroup, QObject* parent)
-    : ComplexMissionItem                (vehicle, flyView, parent)
+TransectStyleComplexItem::TransectStyleComplexItem(PlanMasterController* masterController, bool flyView, QString settingsGroup, QObject* parent)
+    : ComplexMissionItem                (masterController, flyView, parent)
     , _sequenceNumber                   (0)
     , _terrainPolyPathQuery             (nullptr)
     , _ignoreRecalc                     (false)
     , _complexDistance                  (0)
     , _cameraShots                      (0)
-    , _cameraCalc                       (vehicle, settingsGroup)
+    , _cameraCalc                       (masterController, settingsGroup)
     , _followTerrain                    (false)
     , _loadedMissionItemsParent         (nullptr)
     , _metaDataMap                      (FactMetaData::createMapFromJsonFile(QStringLiteral(":/json/TransectStyle.SettingsGroup.json"), this))
-    , _turnAroundDistanceFact           (settingsGroup, _metaDataMap[_vehicle->multiRotor() ? turnAroundDistanceMultiRotorName : turnAroundDistanceName])
+    , _turnAroundDistanceFact           (settingsGroup, _metaDataMap[_controllerVehicle->multiRotor() ? turnAroundDistanceMultiRotorName : turnAroundDistanceName])
     , _cameraTriggerInTurnAroundFact    (settingsGroup, _metaDataMap[cameraTriggerInTurnAroundName])
     , _hoverAndCaptureFact              (settingsGroup, _metaDataMap[hoverAndCaptureName])
     , _refly90DegreesFact               (settingsGroup, _metaDataMap[refly90DegreesName])
@@ -102,10 +100,14 @@ TransectStyleComplexItem::TransectStyleComplexItem(Vehicle* vehicle, bool flyVie
     connect(&_cameraCalc,                               &CameraCalc::distanceToSurfaceRelativeChanged, this, &TransectStyleComplexItem::coordinateHasRelativeAltitudeChanged);
     connect(&_cameraCalc,                               &CameraCalc::distanceToSurfaceRelativeChanged, this, &TransectStyleComplexItem::exitCoordinateHasRelativeAltitudeChanged);
 
+    connect(&_hoverAndCaptureFact,                      &Fact::rawValueChanged,         this, &TransectStyleComplexItem::_handleHoverAndCaptureEnabled);
+
     connect(this,                                       &TransectStyleComplexItem::visualTransectPointsChanged, this, &TransectStyleComplexItem::complexDistanceChanged);
     connect(this,                                       &TransectStyleComplexItem::visualTransectPointsChanged, this, &TransectStyleComplexItem::greatestDistanceToChanged);
+    connect(this,                                       &TransectStyleComplexItem::followTerrainChanged,        this, &TransectStyleComplexItem::_followTerrainChanged);
+    connect(this,                                       &TransectStyleComplexItem::wizardModeChanged,           this, &TransectStyleComplexItem::readyForSaveStateChanged);
 
-    connect(this,                                       &TransectStyleComplexItem::followTerrainChanged, this, &TransectStyleComplexItem::_followTerrainChanged);
+    connect(&_surveyAreaPolygon,                        &QGCMapPolygon::isValidChanged, this, &TransectStyleComplexItem::readyForSaveStateChanged);
 
     setDirty(false);
 }
@@ -132,8 +134,6 @@ void TransectStyleComplexItem::setDirty(bool dirty)
 
 void TransectStyleComplexItem::_save(QJsonObject& complexObject)
 {
-    ComplexMissionItem::_saveItem(complexObject);
-
     QJsonObject innerObject;
 
     innerObject[JsonHelper::jsonVersionKey] =       1;
@@ -187,8 +187,6 @@ void TransectStyleComplexItem::setSequenceNumber(int sequenceNumber)
 
 bool TransectStyleComplexItem::_load(const QJsonObject& complexObject, bool forPresets, QString& errorString)
 {
-    ComplexMissionItem::_loadItem(complexObject);
-
     QList<JsonHelper::KeyValidateInfo> keyInfoList = {
         { _jsonTransectStyleComplexItemKey, QJsonValue::Object, true },
     };
@@ -230,6 +228,7 @@ bool TransectStyleComplexItem::_load(const QJsonObject& complexObject, bool forP
         }
         _coordinate = _visualTransectPoints.count() ? _visualTransectPoints.first().value<QGeoCoordinate>() : QGeoCoordinate();
         _exitCoordinate = _visualTransectPoints.count() ? _visualTransectPoints.last().value<QGeoCoordinate>() : QGeoCoordinate();
+        _isIncomplete = false;
 
         // Load generated mission items
         _loadedMissionItemsParent = new QObject(this);
@@ -246,7 +245,7 @@ bool TransectStyleComplexItem::_load(const QJsonObject& complexObject, bool forP
     }
 
     // Load CameraCalc data
-    if (!_cameraCalc.load(innerObject[_jsonCameraCalcKey].toObject(), forPresets, cameraInPreset(), errorString)) {
+    if (!_cameraCalc.load(innerObject[_jsonCameraCalcKey].toObject(), errorString)) {
         return false;
     }
 
@@ -336,17 +335,17 @@ double TransectStyleComplexItem::coveredArea(void) const
 
 bool TransectStyleComplexItem::_hasTurnaround(void) const
 {
-    return _turnaroundDistance() > 0;
+    return _turnAroundDistance() > 0;
 }
 
-double TransectStyleComplexItem::_turnaroundDistance(void) const
+double TransectStyleComplexItem::_turnAroundDistance(void) const
 {
     return _turnAroundDistanceFact.rawValue().toDouble();
 }
 
 bool TransectStyleComplexItem::hoverAndCaptureAllowed(void) const
 {
-    return _vehicle->multiRotor() || _vehicle->vtol();
+    return _controllerVehicle->multiRotor() || _controllerVehicle->vtol();
 }
 
 void TransectStyleComplexItem::_rebuildTransects(void)
@@ -408,6 +407,11 @@ void TransectStyleComplexItem::_rebuildTransects(void)
     emit coordinateChanged(_coordinate);
     emit exitCoordinateChanged(_exitCoordinate);
 
+    if (_isIncomplete) {
+        _isIncomplete = false;
+        emit isIncompleteChanged();
+    }
+
     _recalcComplexDistance();
     _recalcCameraShots();
 
@@ -419,6 +423,7 @@ void TransectStyleComplexItem::_rebuildTransects(void)
 void TransectStyleComplexItem::_queryTransectsPathHeightInfo(void)
 {
     _transectsPathHeightInfo.clear();
+    emit readyForSaveStateChanged();
 
     if (_transects.count()) {
         // We don't actually send the query until this timer times out. This way we only send
@@ -463,6 +468,7 @@ void TransectStyleComplexItem::_reallyQueryTransectsPathHeightInfo(void)
 void TransectStyleComplexItem::_polyPathTerrainData(bool success, const QList<TerrainPathQuery::PathHeightInfo_t>& rgPathHeightInfo)
 {
     _transectsPathHeightInfo.clear();
+    emit readyForSaveStateChanged();
 
     if (success) {
         // Break out into individual transects
@@ -475,6 +481,7 @@ void TransectStyleComplexItem::_polyPathTerrainData(bool success, const QList<Te
             }
             pathHeightIndex++;  // There is an extra on between each transect
         }
+        emit readyForSaveStateChanged();
 
         // Now that we have terrain data we can adjust
         _adjustTransectsForTerrain();
@@ -487,16 +494,31 @@ void TransectStyleComplexItem::_polyPathTerrainData(bool success, const QList<Te
     _terrainPolyPathQuery = nullptr;
 }
 
-bool TransectStyleComplexItem::readyForSave(void) const
+TransectStyleComplexItem::ReadyForSaveState TransectStyleComplexItem::readyForSaveState(void) const
 {
-    // Make sure we have the terrain data we need
-    return _followTerrain ? _transectsPathHeightInfo.count() : true;
+    bool terrainReady = false;
+    if (_followTerrain) {
+        if (_loadedMissionItems.count()) {
+            // We have loaded mission items. Everything is ready to go.
+            terrainReady = true;
+        } else {
+            // Survey is currently being designed. We aren't ready if we don't have terrain heights yet.
+            terrainReady = _transectsPathHeightInfo.count();
+        }
+    } else {
+        // Now following terrain so always ready on terrain
+        terrainReady = true;
+    }
+    bool polygonNotReady = !_surveyAreaPolygon.isValid();
+    return (polygonNotReady || _wizardMode) ?
+                NotReadyForSaveData :
+                (terrainReady ? ReadyForSave : NotReadyForSaveTerrain);
 }
 
 void TransectStyleComplexItem::_adjustTransectsForTerrain(void)
 {
     if (_followTerrain) {
-        if (!readyForSave()) {
+        if (readyForSaveState() != ReadyForSave) {
             qCWarning(TransectStyleComplexItemLog) << "_adjustTransectPointsForTerrain called when terrain data not ready";
             qgcApp()->showMessage(tr("INTERNAL ERROR: TransectStyleComplexItem::_adjustTransectPointsForTerrain called when terrain data not ready. Plan will be incorrect."));
             return;
@@ -731,16 +753,26 @@ int TransectStyleComplexItem::lastSequenceNumber(void) const
         int itemCount = 0;
 
         for (const QList<CoordInfo_t>& rgCoordInfo: _transects) {
-            itemCount += rgCoordInfo.count() * (hoverAndCaptureEnabled() ? 2 : 1);
+            int commandsPerCoord = 1; // Waypoint command
+            if (hoverAndCaptureEnabled()) {
+                commandsPerCoord++; // Camera trigger
+            }
+            itemCount += rgCoordInfo.count() * commandsPerCoord;
+            if (hoverAndCaptureEnabled() && _turnAroundDistance() != 0) {
+                // The turnaround points do not have camera triggers on them
+                itemCount -= 2;
+            }
         }
 
 
         if (!hoverAndCaptureEnabled() && triggerCamera()) {
             if (_cameraTriggerInTurnAroundFact.rawValue().toBool()) {
-                // One camera start/stop for beginning/end of entire survey
-                itemCount += 2;
-                // One camera start for each transect
-                itemCount += _transects.count();
+                itemCount += _transects.count();    // One camera start for each transect entry
+                itemCount++;                        // Single camera stop and the very end
+                if (_turnAroundDistance() != 0) {
+                    // If there are turnarounds then there is an additional camera start on the first turnaround
+                    itemCount++;
+                }
             } else {
                 // Each transect will have a camera start and stop in it
                 itemCount += _transects.count() * 2;
@@ -767,5 +799,190 @@ void TransectStyleComplexItem::_followTerrainChanged(bool followTerrain)
     if (followTerrain) {
         _refly90DegreesFact.setRawValue(false);
         _hoverAndCaptureFact.setRawValue(false);
+    }
+}
+
+void TransectStyleComplexItem::_handleHoverAndCaptureEnabled(QVariant enabled)
+{
+    if (enabled.toBool() && _cameraTriggerInTurnAroundFact.rawValue().toBool()) {
+        _cameraTriggerInTurnAroundFact.setRawValue(false);
+    }
+}
+
+void TransectStyleComplexItem::appendMissionItems(QList<MissionItem*>& items, QObject* missionItemParent)
+{
+    if (_loadedMissionItems.count()) {
+        // We have mission items from the loaded plan, use those
+        _appendLoadedMissionItems(items, missionItemParent);
+    } else {
+        // Build the mission items on the fly
+        _buildAndAppendMissionItems(items, missionItemParent);
+    }
+}
+
+void TransectStyleComplexItem::_appendWaypoint(QList<MissionItem*>& items, QObject* missionItemParent, int& seqNum, MAV_FRAME mavFrame, float holdTime, const QGeoCoordinate& coordinate)
+{
+    MissionItem* item = new MissionItem(seqNum++,
+                                        MAV_CMD_NAV_WAYPOINT,
+                                        mavFrame,
+                                        holdTime,
+                                        0.0,                                         // No acceptance radius specified
+                                        0.0,                                         // Pass through waypoint
+                                        std::numeric_limits<double>::quiet_NaN(),    // Yaw unchanged
+                                        coordinate.latitude(),
+                                        coordinate.longitude(),
+                                        coordinate.altitude(),
+                                        true,                                        // autoContinue
+                                        false,                                       // isCurrentItem
+                                        missionItemParent);
+    items.append(item);
+}
+
+void TransectStyleComplexItem::_appendSinglePhotoCapture(QList<MissionItem*>& items, QObject* missionItemParent, int& seqNum)
+{
+    MissionItem* item = new MissionItem(seqNum++,
+                                        MAV_CMD_IMAGE_START_CAPTURE,
+                                        MAV_FRAME_MISSION,
+                                        0,                                   // Reserved (Set to 0)
+                                        0,                                   // Interval (none)
+                                        1,                                   // Take 1 photo
+                                        qQNaN(), qQNaN(), qQNaN(), qQNaN(),  // param 4-7 reserved
+                                        true,                                // autoContinue
+                                        false,                               // isCurrentItem
+                                        missionItemParent);
+    items.append(item);
+}
+
+void TransectStyleComplexItem::_appendConditionGate(QList<MissionItem*>& items, QObject* missionItemParent, int& seqNum, MAV_FRAME mavFrame, const QGeoCoordinate& coordinate)
+{
+    MissionItem* item = new MissionItem(seqNum++,
+                                        MAV_CMD_CONDITION_GATE,
+                                        mavFrame,
+                                        0,                                           // Gate is orthogonal to path
+                                        0,                                           // Ignore altitude
+                                        0, 0,                                        // Param 3-4 ignored
+                                        coordinate.latitude(),
+                                        coordinate.longitude(),
+                                        0,                                           // No altitude
+                                        true,                                        // autoContinue
+                                        false,                                       // isCurrentItem
+                                        missionItemParent);
+    items.append(item);
+}
+
+void TransectStyleComplexItem::_appendCameraTriggerDistance(QList<MissionItem*>& items, QObject* missionItemParent, int& seqNum, float triggerDistance)
+{
+    MissionItem* item = new MissionItem(seqNum++,
+                                        MAV_CMD_DO_SET_CAM_TRIGG_DIST,
+                                        MAV_FRAME_MISSION,
+                                        triggerDistance,
+                                        0,                              // shutter integration (ignore)
+                                        1,                              // 1 - trigger one image immediately, both and entry and exit to get full coverage
+                                        0, 0, 0, 0,                     // param 4-7 unused
+                                        true,                           // autoContinue
+                                        false,                          // isCurrentItem
+                                        missionItemParent);
+    items.append(item);
+}
+
+void TransectStyleComplexItem::_appendCameraTriggerDistanceUpdatePoint(QList<MissionItem*>& items, QObject* missionItemParent, int& seqNum, MAV_FRAME mavFrame, const QGeoCoordinate& coordinate, bool useConditionGate, float triggerDistance)
+{
+    if (useConditionGate) {
+        _appendConditionGate(items, missionItemParent, seqNum, mavFrame, coordinate);
+    } else {
+        _appendWaypoint(items, missionItemParent, seqNum, mavFrame, 0 /* holdTime */, coordinate);
+    }
+    _appendCameraTriggerDistance(items, missionItemParent, seqNum, triggerDistance);
+}
+
+void TransectStyleComplexItem::_buildAndAppendMissionItems(QList<MissionItem*>& items, QObject* missionItemParent)
+{
+    qCDebug(TransectStyleComplexItemLog) << "_buildAndAppendMissionItems";
+
+    // Now build the mission items from the transect points
+
+    int seqNum =                    _sequenceNumber;
+    bool imagesInTurnaround =       _cameraTriggerInTurnAroundFact.rawValue().toBool();
+    bool hasTurnarounds =           _turnAroundDistance() != 0;
+    bool addTriggerAtBeginningEnd = !hoverAndCaptureEnabled() && imagesInTurnaround && triggerCamera();
+    bool useConditionGate =         _controllerVehicle->firmwarePlugin()->supportedMissionCommands().contains(MAV_CMD_CONDITION_GATE) &&
+                                        triggerCamera() &&
+                                        !hoverAndCaptureEnabled();
+
+    MAV_FRAME mavFrame = followTerrain() || !_cameraCalc.distanceToSurfaceRelative() ? MAV_FRAME_GLOBAL : MAV_FRAME_GLOBAL_RELATIVE_ALT;
+
+    // Note: The code below is written to be understable as oppose to being compact and/or remove duplicate code
+    int transectIndex = 0;
+    for (const QList<TransectStyleComplexItem::CoordInfo_t>& transect: _transects) {
+        bool entryTurnaround = true;
+        for (const CoordInfo_t& transectCoordInfo: transect) {
+            switch (transectCoordInfo.coordType) {
+            case CoordTypeTurnaround:
+            {
+                bool firstEntryTurnaround = transectIndex == 0 && entryTurnaround;
+                bool lastExitTurnaround = transectIndex == _transects.count() - 1 && !entryTurnaround;
+                if (addTriggerAtBeginningEnd && (firstEntryTurnaround || lastExitTurnaround)) {
+                    _appendCameraTriggerDistanceUpdatePoint(items, missionItemParent, seqNum, mavFrame, transectCoordInfo.coord, useConditionGate, firstEntryTurnaround ? triggerDistance() : 0);
+                } else {
+                    _appendWaypoint(items, missionItemParent, seqNum, mavFrame, 0 /* holdTime */, transectCoordInfo.coord);
+                }
+                entryTurnaround = false;
+            }
+                break;
+            case CoordTypeInterior:
+            case CoordTypeInteriorTerrainAdded:
+                _appendWaypoint(items, missionItemParent, seqNum, mavFrame, 0 /* holdTime */, transectCoordInfo.coord);
+                break;
+            case CoordTypeInteriorHoverTrigger:
+                _appendWaypoint(items, missionItemParent, seqNum, mavFrame, _hoverAndCaptureDelaySeconds, transectCoordInfo.coord);
+                _appendSinglePhotoCapture(items, missionItemParent, seqNum);
+                break;
+            case CoordTypeSurveyEntry:
+                if (triggerCamera()) {
+                    if (hoverAndCaptureEnabled()) {
+                        _appendWaypoint(items, missionItemParent, seqNum, mavFrame, _hoverAndCaptureDelaySeconds, transectCoordInfo.coord);
+                        _appendSinglePhotoCapture(items, missionItemParent, seqNum);
+                    } else {
+                        // We always add a trigger start to survey entry. Even for imagesInTurnaround = true. This allows you to resume a mission and refly a transect
+                        _appendCameraTriggerDistanceUpdatePoint(items, missionItemParent, seqNum, mavFrame, transectCoordInfo.coord, useConditionGate, triggerDistance());
+                    }
+                } else {
+                    _appendWaypoint(items, missionItemParent, seqNum, mavFrame, 0 /* holdTime */, transectCoordInfo.coord);
+                }
+                break;
+            case CoordTypeSurveyExit:
+                bool lastSurveyExit = transectIndex == _transects.count() - 1;
+                if (triggerCamera()) {
+                    if (hoverAndCaptureEnabled()) {
+                        _appendWaypoint(items, missionItemParent, seqNum, mavFrame, _hoverAndCaptureDelaySeconds, transectCoordInfo.coord);
+                        _appendSinglePhotoCapture(items, missionItemParent, seqNum);
+                    } else if (addTriggerAtBeginningEnd && !hasTurnarounds && lastSurveyExit) {
+                        _appendCameraTriggerDistanceUpdatePoint(items, missionItemParent, seqNum, mavFrame, transectCoordInfo.coord, useConditionGate, 0 /* triggerDistance */);
+                    } else if (imagesInTurnaround) {
+                        _appendWaypoint(items, missionItemParent, seqNum, mavFrame, 0 /* holdTime */, transectCoordInfo.coord);
+                    } else {
+                        // If we get this far it means the camera is triggering start/stop for each transect
+                        _appendCameraTriggerDistanceUpdatePoint(items, missionItemParent, seqNum, mavFrame, transectCoordInfo.coord, useConditionGate, 0 /* triggerDistance */);
+                    }
+                } else {
+                    _appendWaypoint(items, missionItemParent, seqNum, mavFrame, 0 /* holdTime */, transectCoordInfo.coord);
+                }
+                break;
+            }
+        }
+        transectIndex++;
+    }
+}
+
+void TransectStyleComplexItem::_appendLoadedMissionItems(QList<MissionItem*>& items, QObject* missionItemParent)
+{
+    qCDebug(TransectStyleComplexItemLog) << "_appendLoadedMissionItems";
+
+    int seqNum = _sequenceNumber;
+
+    for (const MissionItem* loadedMissionItem: _loadedMissionItems) {
+        MissionItem* item = new MissionItem(*loadedMissionItem, missionItemParent);
+        item->setSequenceNumber(seqNum++);
+        items.append(item);
     }
 }

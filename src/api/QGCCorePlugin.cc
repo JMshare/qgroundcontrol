@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -15,6 +15,7 @@
 #include "SettingsManager.h"
 #include "AppMessages.h"
 #include "QmlObjectListModel.h"
+#include "VideoManager.h"
 #include "VideoReceiver.h"
 #include "QGCLoggingCategory.h"
 #include "QGCCameraManager.h"
@@ -24,7 +25,7 @@
 
 /// @file
 ///     @brief Core Plugin Interface for QGroundControl - Default Implementation
-///     @author Gus Grubba <mavlink@grubba.com>
+///     @author Gus Grubba <gus@auterion.com>
 
 class QGCCorePlugin_p
 {
@@ -98,6 +99,7 @@ public:
 
     QGCOptions*         defaultOptions          = nullptr;
     QVariantList        settingsList;
+    QVariantList        analyzeList;
     QVariantList        instrumentPageWidgetList;
 
     QmlObjectListModel _emptyCustomMapItems;
@@ -290,6 +292,21 @@ QVariantList& QGCCorePlugin::instrumentPages()
     return _p->instrumentPageWidgetList;
 }
 
+QVariantList& QGCCorePlugin::analyzePages()
+{
+    if (!_p->analyzeList.count()) {
+        _p->analyzeList.append(QVariant::fromValue(new QmlComponentInfo(tr("Log Download"),     QUrl::fromUserInput("qrc:/qml/LogDownloadPage.qml"),      QUrl::fromUserInput("qrc:/qmlimages/LogDownloadIcon"))));
+#if !defined(__mobile__)
+        _p->analyzeList.append(QVariant::fromValue(new QmlComponentInfo(tr("GeoTag Images"),    QUrl::fromUserInput("qrc:/qml/GeoTagPage.qml"),           QUrl::fromUserInput("qrc:/qmlimages/GeoTagIcon"))));
+#endif
+        _p->analyzeList.append(QVariant::fromValue(new QmlComponentInfo(tr("MAVLink Console"),  QUrl::fromUserInput("qrc:/qml/MavlinkConsolePage.qml"),   QUrl::fromUserInput("qrc:/qmlimages/MavlinkConsoleIcon"))));
+#if defined(QGC_ENABLE_MAVLINK_INSPECTOR)
+        _p->analyzeList.append(QVariant::fromValue(new QmlComponentInfo(tr("MAVLink Inspector"),QUrl::fromUserInput("qrc:/qml/MAVLinkInspectorPage.qml"), QUrl::fromUserInput("qrc:/qmlimages/MAVLinkInspector"))));
+#endif
+    }
+    return _p->analyzeList;
+}
+
 int QGCCorePlugin::defaultSettings()
 {
     return 0;
@@ -315,6 +332,14 @@ bool QGCCorePlugin::adjustSettingMetaData(const QString& settingsGroup, FactMeta
 {
     if (settingsGroup != AppSettings::settingsGroup) {
         // All changes refer to AppSettings
+#if !defined(QGC_ENABLE_PAIRING)
+        //-- If we don't support pairing, disable it.
+        if (metaData.name() == AppSettings::usePairingName) {
+            metaData.setRawDefaultValue(false);
+            //-- And hide the option
+            return false;
+        }
+#endif
         return true;
     }
 
@@ -406,6 +431,11 @@ bool QGCCorePlugin::mavlinkMessage(Vehicle* vehicle, LinkInterface* link, mavlin
 QmlObjectListModel* QGCCorePlugin::customMapItems()
 {
     return &_p->_emptyCustomMapItems;
+}
+
+VideoManager* QGCCorePlugin::createVideoManager(QGCApplication *app, QGCToolbox *toolbox)
+{
+    return new VideoManager(app, toolbox);
 }
 
 VideoReceiver* QGCCorePlugin::createVideoReceiver(QObject* parent)

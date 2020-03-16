@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -33,11 +33,11 @@ MultiVehicleManager::MultiVehicleManager(QGCApplication* app, QGCToolbox* toolbo
     : QGCTool(app, toolbox)
     , _activeVehicleAvailable(false)
     , _parameterReadyVehicleAvailable(false)
-    , _activeVehicle(NULL)
-    , _offlineEditingVehicle(NULL)
-    , _firmwarePluginManager(NULL)
-    , _joystickManager(NULL)
-    , _mavlinkProtocol(NULL)
+    , _activeVehicle(nullptr)
+    , _offlineEditingVehicle(nullptr)
+    , _firmwarePluginManager(nullptr)
+    , _joystickManager(nullptr)
+    , _mavlinkProtocol(nullptr)
     , _gcsHeartbeatEnabled(true)
 {
     QSettings settings;
@@ -236,7 +236,7 @@ void MultiVehicleManager::_deleteVehiclePhase2(void)
     /// Qml has been notified of vehicle about to go away and should be disconnected from it by now.
     /// This means we can now clear the active vehicle property and delete the Vehicle for real.
 
-    Vehicle* newActiveVehicle = NULL;
+    Vehicle* newActiveVehicle = nullptr;
     if (_vehicles.count()) {
         newActiveVehicle = qobject_cast<Vehicle*>(_vehicles[0]);
     }
@@ -285,6 +285,14 @@ void MultiVehicleManager::_setActiveVehiclePhase2(void)
 {
     qCDebug(MultiVehicleManagerLog) << "_setActiveVehiclePhase2 _vehicleBeingSetActive" << _vehicleBeingSetActive;
 
+    //-- Keep track of current vehicle's coordinates
+    if(_activeVehicle) {
+        disconnect(_activeVehicle, &Vehicle::coordinateChanged, this, &MultiVehicleManager::_coordinateChanged);
+    }
+    if(_vehicleBeingSetActive) {
+        connect(_vehicleBeingSetActive, &Vehicle::coordinateChanged, this, &MultiVehicleManager::_coordinateChanged);
+    }
+
     // Now we signal the new active vehicle
     _activeVehicle = _vehicleBeingSetActive;
     emit activeVehicleChanged(_activeVehicle);
@@ -302,9 +310,15 @@ void MultiVehicleManager::_setActiveVehiclePhase2(void)
     }
 }
 
+void MultiVehicleManager::_coordinateChanged(QGeoCoordinate coordinate)
+{
+    _lastKnownLocation = coordinate;
+    emit lastKnownLocationChanged();
+}
+
 void MultiVehicleManager::_vehicleParametersReadyChanged(bool parametersReady)
 {
-    ParameterManager* paramMgr = dynamic_cast<ParameterManager*>(sender());
+    auto* paramMgr = qobject_cast<ParameterManager*>(sender());
 
     if (!paramMgr) {
         qWarning() << "Dynamic cast failed!";
@@ -338,7 +352,7 @@ Vehicle* MultiVehicleManager::getVehicleById(int vehicleId)
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
 void MultiVehicleManager::setGcsHeartbeatEnabled(bool gcsHeartBeatEnabled)

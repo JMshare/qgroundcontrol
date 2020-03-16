@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -26,8 +26,8 @@ class FactGroup : public QObject
     Q_OBJECT
     
 public:
-    FactGroup(int updateRateMsecs, const QString& metaDataFile, QObject* parent = NULL);
-    FactGroup(int updateRateMsecs, QObject* parent = NULL);
+    FactGroup(int updateRateMsecs, const QString& metaDataFile, QObject* parent = nullptr);
+    FactGroup(int updateRateMsecs, QObject* parent = nullptr);
 
     Q_PROPERTY(QStringList factNames        READ factNames      CONSTANT)
     Q_PROPERTY(QStringList factGroupNames   READ factGroupNames CONSTANT)

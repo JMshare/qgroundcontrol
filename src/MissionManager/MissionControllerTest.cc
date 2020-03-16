@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -18,9 +18,9 @@
 #include "AppSettings.h"
 
 MissionControllerTest::MissionControllerTest(void)
-    : _multiSpyMissionController(NULL)
-    , _multiSpyMissionItem(NULL)
-    , _missionController(NULL)
+    : _multiSpyMissionController(nullptr)
+    , _multiSpyMissionItem(nullptr)
+    , _missionController(nullptr)
 {
     
 }
@@ -28,13 +28,13 @@ MissionControllerTest::MissionControllerTest(void)
 void MissionControllerTest::cleanup(void)
 {
     delete _masterController;
-    _masterController = NULL;
+    _masterController = nullptr;
 
     delete _multiSpyMissionController;
-    _multiSpyMissionController = NULL;
+    _multiSpyMissionController = nullptr;
 
     delete _multiSpyMissionItem;
-    _multiSpyMissionItem = NULL;
+    _multiSpyMissionItem = nullptr;
 
     MissionControllerManagerTest::cleanup();
 }
@@ -48,7 +48,6 @@ void MissionControllerTest::_initForFirmwareType(MAV_AUTOPILOT firmwareType)
 
     // MissionController signals
     _rgMissionControllerSignals[visualItemsChangedSignalIndex] =    SIGNAL(visualItemsChanged());
-    _rgMissionControllerSignals[waypointLinesChangedSignalIndex] =  SIGNAL(waypointLinesChanged());
 
     // Master controller pulls offline vehicle info from settings
     qgcApp()->toolbox()->settingsManager()->appSettings()->offlineEditingFirmwareType()->setRawValue(firmwareType);
@@ -62,7 +61,7 @@ void MissionControllerTest::_initForFirmwareType(MAV_AUTOPILOT firmwareType)
     _masterController->start(false /* flyView */);
 
     // All signals should some through on start
-    QCOMPARE(_multiSpyMissionController->checkOnlySignalsByMask(visualItemsChangedSignalMask | waypointLinesChangedSignalMask), true);
+    QCOMPARE(_multiSpyMissionController->checkOnlySignalsByMask(visualItemsChangedSignalMask), true);
     _multiSpyMissionController->clearAllSignals();
 
     QmlObjectListModel* visualItems = _missionController->visualItems();
@@ -110,53 +109,6 @@ void MissionControllerTest::_testEmptyVehiclePX4(void)
 void MissionControllerTest::_testEmptyVehicleAPM(void)
 {
     _testEmptyVehicleWorker(MAV_AUTOPILOT_ARDUPILOTMEGA);
-}
-
-void MissionControllerTest::_testAddWaypointWorker(MAV_AUTOPILOT firmwareType)
-{
-    _initForFirmwareType(firmwareType);
-
-    QGeoCoordinate coordinate(37.803784, -122.462276);
-
-    _missionController->insertSimpleMissionItem(coordinate, _missionController->visualItems()->count());
-
-    QCOMPARE(_multiSpyMissionController->checkOnlySignalsByMask(waypointLinesChangedSignalMask), true);
-
-    QmlObjectListModel* visualItems = _missionController->visualItems();
-    QVERIFY(visualItems);
-
-    QCOMPARE(visualItems->count(), 2);
-
-    MissionSettingsItem* settingsItem = visualItems->value<MissionSettingsItem*>(0);
-    SimpleMissionItem* simpleItem = visualItems->value<SimpleMissionItem*>(1);
-    QVERIFY(settingsItem);
-    QVERIFY(simpleItem);
-
-    QCOMPARE((MAV_CMD)simpleItem->command(), MAV_CMD_NAV_TAKEOFF);
-    QCOMPARE(simpleItem->childItems()->count(), 0);
-
-    // Planned home position should always be set after first item
-    QVERIFY(settingsItem->coordinate().isValid());
-
-    // ArduPilot takeoff command has no coordinate, so should be child item
-    QCOMPARE(settingsItem->childItems()->count(), firmwareType == MAV_AUTOPILOT_ARDUPILOTMEGA ? 1 : 0);
-
-    // Check waypoint line from home to takeoff
-    int expectedLineCount = firmwareType == MAV_AUTOPILOT_ARDUPILOTMEGA ? 0 : 1;
-    QmlObjectListModel* waypointLines = _missionController->waypointLines();
-    QVERIFY(waypointLines);
-    QCOMPARE(waypointLines->count(), expectedLineCount);
-}
-
-void MissionControllerTest::_testAddWayppointAPM(void)
-{
-    _testAddWaypointWorker(MAV_AUTOPILOT_ARDUPILOTMEGA);
-}
-
-
-void MissionControllerTest::_testAddWayppointPX4(void)
-{
-    _testAddWaypointWorker(MAV_AUTOPILOT_PX4);
 }
 
 #if 0

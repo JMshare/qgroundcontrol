@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -13,6 +13,7 @@
 #include "QGCGeo.h"
 #include "QGroundControlQmlGlobal.h"
 #include "SimpleMissionItem.h"
+#include "PlanMasterController.h"
 
 #include <QPolygonF>
 
@@ -45,12 +46,13 @@ const char* FixedWingLandingComplexItem::_jsonFallRateKey =                 "fal
 const char* FixedWingLandingComplexItem::_jsonLandingAltitudeRelativeKey =  "landAltitudeRelative";
 const char* FixedWingLandingComplexItem::_jsonLoiterAltitudeRelativeKey =   "loiterAltitudeRelative";
 
-FixedWingLandingComplexItem::FixedWingLandingComplexItem(Vehicle* vehicle, bool flyView, QObject* parent)
-    : ComplexMissionItem        (vehicle, flyView, parent)
+FixedWingLandingComplexItem::FixedWingLandingComplexItem(PlanMasterController* masterController, bool flyView, QObject* parent)
+    : ComplexMissionItem        (masterController, flyView, parent)
     , _sequenceNumber           (0)
     , _dirty                    (false)
     , _landingCoordSet          (false)
     , _ignoreRecalcSignals      (false)
+    , _loiterDragAngleOnly      (false)
     , _metaDataMap              (FactMetaData::createMapFromJsonFile(QStringLiteral(":/json/FWLandingPattern.FactMetaData.json"), this))
     , _landingDistanceFact      (settingsGroup, _metaDataMap[loiterToLandDistanceName])
     , _loiterAltitudeFact       (settingsGroup, _metaDataMap[loiterAltitudeName])
@@ -65,6 +67,7 @@ FixedWingLandingComplexItem::FixedWingLandingComplexItem(Vehicle* vehicle, bool 
     , _altitudesAreRelative     (true)
 {
     _editorQml = "qrc:/qml/FWLandingPatternEditor.qml";
+    _isIncomplete = false;
 
     connect(&_loiterAltitudeFact,       &Fact::valueChanged,                                    this, &FixedWingLandingComplexItem::_updateLoiterCoodinateAltitudeFromFact);
     connect(&_landingAltitudeFact,      &Fact::valueChanged,                                    this, &FixedWingLandingComplexItem::_updateLandingCoodinateAltitudeFromFact);
@@ -100,7 +103,10 @@ FixedWingLandingComplexItem::FixedWingLandingComplexItem(Vehicle* vehicle, bool 
     connect(this,                       &FixedWingLandingComplexItem::altitudesAreRelativeChanged,      this, &FixedWingLandingComplexItem::coordinateHasRelativeAltitudeChanged);
     connect(this,                       &FixedWingLandingComplexItem::altitudesAreRelativeChanged,      this, &FixedWingLandingComplexItem::exitCoordinateHasRelativeAltitudeChanged);
 
-    if (vehicle->apmFirmware()) {
+    connect(this,                       &FixedWingLandingComplexItem::landingCoordSetChanged,           this, &FixedWingLandingComplexItem::readyForSaveStateChanged);
+    connect(this,                       &FixedWingLandingComplexItem::wizardModeChanged,                this, &FixedWingLandingComplexItem::readyForSaveStateChanged);
+
+    if (_masterController->controllerVehicle()->apmFirmware()) {
         // ArduPilot does not support camera commands
         _stopTakingVideoFact.setRawValue(false);
         _stopTakingPhotosFact.setRawValue(false);
@@ -359,7 +365,7 @@ void FixedWingLandingComplexItem::appendMissionItems(QList<MissionItem*>& items,
     items.append(item);
 }
 
-bool FixedWingLandingComplexItem::scanForItem(QmlObjectListModel* visualItems, bool flyView, Vehicle* vehicle)
+bool FixedWingLandingComplexItem::scanForItem(QmlObjectListModel* visualItems, bool flyView, PlanMasterController* masterController)
 {
     qCDebug(FixedWingLandingComplexItemLog) << "FixedWingLandingComplexItem::scanForItem count" << visualItems->count();
 
@@ -450,7 +456,7 @@ bool FixedWingLandingComplexItem::scanForItem(QmlObjectListModel* visualItems, b
 
     // Now stuff all the scanned information into the item
 
-    FixedWingLandingComplexItem* complexItem = new FixedWingLandingComplexItem(vehicle, flyView, visualItems);
+    FixedWingLandingComplexItem* complexItem = new FixedWingLandingComplexItem(masterController, flyView, visualItems);
 
     complexItem->_ignoreRecalcSignals = true;
 
@@ -707,4 +713,17 @@ void FixedWingLandingComplexItem::_calcGlideSlope(void)
 void FixedWingLandingComplexItem::_signalLastSequenceNumberChanged(void)
 {
     emit lastSequenceNumberChanged(lastSequenceNumber());
+}
+
+FixedWingLandingComplexItem::ReadyForSaveState FixedWingLandingComplexItem::readyForSaveState(void) const
+{
+    return _landingCoordSet && !_wizardMode ? ReadyForSave : NotReadyForSaveData;
+}
+
+void FixedWingLandingComplexItem::setLoiterDragAngleOnly(bool loiterDragAngleOnly)
+{
+    if (loiterDragAngleOnly != _loiterDragAngleOnly) {
+        _loiterDragAngleOnly = loiterDragAngleOnly;
+        emit loiterDragAngleOnlyChanged(_loiterDragAngleOnly);
+    }
 }

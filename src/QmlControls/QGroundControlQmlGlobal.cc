@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -66,6 +66,10 @@ void QGroundControlQmlGlobal::setToolbox(QGCToolbox* toolbox)
     _settingsManager        = toolbox->settingsManager();
     _gpsRtkFactGroup        = qgcApp()->gpsRtkFactGroup();
     _airspaceManager        = toolbox->airspaceManager();
+    _adsbVehicleManager     = toolbox->adsbVehicleManager();
+#if defined(QGC_ENABLE_PAIRING)
+    _pairingManager         = toolbox->pairingManager();
+#endif
 #if defined(QGC_GST_TAISYNC_ENABLED)
     _taisyncManager         = toolbox->taisyncManager();
 #endif
@@ -244,4 +248,15 @@ void QGroundControlQmlGlobal::setFlightMapZoom(double zoom)
         _zoom = zoom;
         emit flightMapZoomChanged(zoom);
     }
+}
+
+QString QGroundControlQmlGlobal::qgcVersion(void) const
+{
+    QString versionStr = qgcApp()->applicationVersion();
+#ifdef __androidArm32__
+    versionStr += QStringLiteral(" %1").arg(tr("32 bit"));
+#elif __androidArm64__
+    versionStr += QStringLiteral(" %1").arg(tr("64 bit"));
+#endif
+    return versionStr;
 }

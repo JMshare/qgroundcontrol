@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -80,10 +80,10 @@ static bool contains_target(const QList<UDPCLient*> list, const QHostAddress& ad
 UDPLink::UDPLink(SharedLinkConfigurationPointer& config)
     : LinkInterface(config)
     #if defined(QGC_ZEROCONF_ENABLED)
-    , _dnssServiceRef(NULL)
+    , _dnssServiceRef(nullptr)
     #endif
     , _running(false)
-    , _socket(NULL)
+    , _socket(nullptr)
     , _udpConfig(qobject_cast<UDPConfiguration*>(config.data()))
     , _connectState(false)
 {
@@ -169,6 +169,7 @@ void UDPLink::_writeBytes(const QByteArray data)
     if (!_socket) {
         return;
     }
+    emit bytesSent(this, data);
     // Send to all manually targeted systems
     for(UDPCLient* target: _udpConfig->targetHosts()) {
         // Skip it if it's part of the session clients below
@@ -253,7 +254,7 @@ void UDPLink::_disconnect(void)
     if (_socket) {
         // Make sure delete happen on correct thread
         _socket->deleteLater();
-        _socket = NULL;
+        _socket = nullptr;
         emit disconnected();
     }
     _connectState = false;
@@ -281,7 +282,7 @@ bool UDPLink::_hardwareConnect()
 {
     if (_socket) {
         delete _socket;
-        _socket = NULL;
+        _socket = nullptr;
     }
     QHostAddress host = QHostAddress::AnyIPv4;
     _socket = new QUdpSocket(this);
@@ -396,7 +397,7 @@ void UDPConfiguration::copyFrom(LinkConfiguration *source)
 
 void UDPConfiguration::_copyFrom(LinkConfiguration *source)
 {
-    UDPConfiguration* usource = dynamic_cast<UDPConfiguration*>(source);
+    auto* usource = qobject_cast<UDPConfiguration*>(source);
     if (usource) {
         _localPort = usource->localPort();
         _clearTargetHosts();

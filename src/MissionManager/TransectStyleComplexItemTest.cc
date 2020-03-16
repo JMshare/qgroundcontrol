@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -11,7 +11,6 @@
 #include "QGCApplication.h"
 
 TransectStyleComplexItemTest::TransectStyleComplexItemTest(void)
-    : _offlineVehicle(NULL)
 {
     _polygonVertices << QGeoCoordinate(47.633550640000003, -122.08982199)
                      << QGeoCoordinate(47.634129020000003, -122.08887249)
@@ -21,10 +20,9 @@ TransectStyleComplexItemTest::TransectStyleComplexItemTest(void)
 
 void TransectStyleComplexItemTest::init(void)
 {
-    UnitTest::init();
+    TransectStyleComplexItemTestBase::init();
 
-    _offlineVehicle = new Vehicle(MAV_AUTOPILOT_PX4, MAV_TYPE_QUADROTOR, qgcApp()->toolbox()->firmwarePluginManager(), this);
-    _transectStyleItem = new TransectStyleItem(_offlineVehicle, this);
+    _transectStyleItem = new TransectStyleItem(_masterController, this);
     _transectStyleItem->cameraTriggerInTurnAround()->setRawValue(false);
     _transectStyleItem->cameraCalc()->cameraName()->setRawValue(_transectStyleItem->cameraCalc()->customCameraName());
     _transectStyleItem->cameraCalc()->valueSetIsDistance()->setRawValue(true);
@@ -49,8 +47,8 @@ void TransectStyleComplexItemTest::init(void)
 void TransectStyleComplexItemTest::cleanup(void)
 {
     delete _transectStyleItem;
-    delete _offlineVehicle;
     delete _multiSpy;
+    TransectStyleComplexItemTestBase::cleanup();
 }
 
 void TransectStyleComplexItemTest::_testDirty(void)
@@ -224,8 +222,8 @@ void TransectStyleComplexItemTest::_testAltMode(void)
     QVERIFY(!_transectStyleItem->followTerrain());
 }
 
-TransectStyleItem::TransectStyleItem(Vehicle* vehicle, QObject* parent)
-    : TransectStyleComplexItem      (vehicle, false /* flyView */, QStringLiteral("UnitTestTransect"), parent)
+TransectStyleItem::TransectStyleItem(PlanMasterController* masterController, QObject* parent)
+    : TransectStyleComplexItem      (masterController, false /* flyView */, QStringLiteral("UnitTestTransect"), parent)
     , rebuildTransectsPhase1Called  (false)
     , recalcComplexDistanceCalled   (false)
     , recalcCameraShotsCalled       (false)

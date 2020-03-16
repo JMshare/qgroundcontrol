@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -20,15 +20,16 @@
 
 Q_DECLARE_LOGGING_CATEGORY(StructureScanComplexItemLog)
 
+class PlanMasterController;
+
 class StructureScanComplexItem : public ComplexMissionItem
 {
     Q_OBJECT
 
 public:
-    /// @param vehicle Vehicle which this is being contructed for
     /// @param flyView true: Created for use in the Fly View, false: Created for use in the Plan View
     /// @param kmlOrSHPFile Polygon comes from this file, empty for default polygon
-    StructureScanComplexItem(Vehicle* vehicle, bool flyView, const QString& kmlOrSHPFile, QObject* parent);
+    StructureScanComplexItem(PlanMasterController* masterController, bool flyView, const QString& kmlOrSHPFile, QObject* parent);
 
     Q_PROPERTY(CameraCalc*      cameraCalc                  READ cameraCalc                                                 CONSTANT)
     Q_PROPERTY(Fact*            entranceAlt                 READ entranceAlt                                                CONSTANT)
@@ -70,11 +71,10 @@ public:
     QString         mapVisualQML        (void) const final { return QStringLiteral("StructureScanMapVisual.qml"); }
 
     // Overrides from VisualMissionItem
-
     bool            dirty                   (void) const final { return _dirty; }
     bool            isSimpleItem            (void) const final { return false; }
     bool            isStandaloneCoordinate  (void) const final { return false; }
-    bool            specifiesCoordinate     (void) const final;
+    bool            specifiesCoordinate     (void) const final { return true; }
     bool            specifiesAltitudeOnly   (void) const final { return false; }
     QString         commandDescription      (void) const final { return tr("Structure Scan"); }
     QString         commandName             (void) const final { return tr("Structure Scan"); }
@@ -89,6 +89,7 @@ public:
     void            setMissionFlightStatus  (MissionController::MissionFlightStatus_t& missionFlightStatus) final;
     void            applyNewAltitude        (double newAltitude) final;
     double          additionalTimeDelay     (void) const final { return 0; }
+    ReadyForSaveState readyForSaveState     (void) const final;
 
     bool coordinateHasRelativeAltitude      (void) const final { return true; }
     bool exitCoordinateHasRelativeAltitude  (void) const final { return true; }
@@ -129,7 +130,6 @@ private slots:
     void _recalcScanDistance        (void);
 
 private:
-    void _setExitCoordinate(const QGeoCoordinate& coordinate);
     void _setCameraShots(int cameraShots);
     double _triggerDistance(void) const;
 

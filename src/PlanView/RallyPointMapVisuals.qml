@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -67,11 +67,11 @@ Item {
             property var rallyPointObject
 
             sourceItem: MissionItemIndexLabel {
-                id:         itemIndexLabel
-                label:      qsTr("R", "rally point map item label")
-                checked:    _editingLayer == _layerRallyPoints ? rallyPointObject === myRallyPointController.currentRallyPoint : false
-
-                onClicked: myRallyPointController.currentRallyPoint = rallyPointObject
+                id:                 itemIndexLabel
+                label:              qsTr("R", "rally point map item label")
+                checked:            _editingLayer == _layerRallyPoints ? rallyPointObject === myRallyPointController.currentRallyPoint : false
+                highlightSelected:  true
+                onClicked:          myRallyPointController.currentRallyPoint = rallyPointObject
             }
         }
     }

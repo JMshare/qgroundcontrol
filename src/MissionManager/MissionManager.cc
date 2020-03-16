@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -46,7 +46,7 @@ void MissionManager::writeArduPilotGuidedMissionItem(const QGeoCoordinate& gotoC
     mavlink_message_t       messageOut;
     mavlink_mission_item_t  missionItem;
 
-    memset(&missionItem, 8, sizeof(missionItem));
+    memset(&missionItem, 0, sizeof(missionItem));
     missionItem.target_system =     _vehicle->id();
     missionItem.target_component =  _vehicle->defaultComponentId();
     missionItem.seq =               0;

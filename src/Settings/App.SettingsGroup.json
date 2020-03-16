@@ -12,7 +12,7 @@
     "shortDescription": "Offline editing vehicle type",
     "type":             "uint32",
     "enumStrings":      "Fixed Wing,Multi-Rotor,VTOL,Rover,Sub",
-    "enumValues":       "1,2,19,10,12",
+    "enumValues":       "1,2,20,10,12",
     "defaultValue":     2
 },
 {
@@ -97,6 +97,13 @@
     "defaultValue":     false
 },
 {
+    "name":             "checkInternet",
+    "shortDescription": "Check Internet connection",
+    "longDescription":  "Check Internet connection before accessing Internet resources.",
+    "type":             "bool",
+    "defaultValue":     true
+},
+{
     "name":             "virtualJoystick",
     "shortDescription": "Show virtual joystick",
     "longDescription":  "If this option is enabled the virtual joystick will be shown on the Fly view.",
@@ -132,6 +139,13 @@
     "defaultValue":     false
 },
 {
+    "name":             "enforceChecklist",
+    "shortDescription": "Preflight checklist must pass before arming",
+    "longDescription":  "If this option is enabled the preflight checklist must pass before arming.",
+    "type":             "bool",
+    "defaultValue":     false
+},
+{
     "name":                 "appFontPointSize",
     "shortDescription":     "Application font size",
     "longDescription":      "The point size for the default font used.",
@@ -139,8 +153,7 @@
     "units":                "pt",
     "min":                  6,
     "max":                  48,
-    "defaultValue":         0,
-    "qgcRebootRequired":    true
+    "defaultValue":         0
 },
 {
     "name":             "indoorPalette",
@@ -205,7 +218,7 @@
     "type":             "uint32",
     "enumStrings":      "Never,Always,When in Follow Me Flight Mode",
     "enumValues":       "0,1,2",
-    "defaultValue":     0
+    "defaultValue":     2
 },
 {
     "name":                 "apmStartMavlinkStreams",
@@ -247,6 +260,20 @@
     "name":             "disableAllPersistence",
     "shortDescription": "Disable all data persistence",
     "longDescription":  "If this option is set, nothing will be saved to disk.",
+    "type":             "bool",
+    "defaultValue":     false
+},
+{
+    "name":             "usePairing",
+    "shortDescription": "Use Pairing",
+    "longDescription":  "Use Link Pairing.",
+    "type":             "bool",
+    "defaultValue":     false
+},
+{
+    "name":             "saveCsvTelemetry",
+    "shortDescription": "Save CSV Telementry Logs",
+    "longDescription":  "If this option is enabled, all Facts will be written to a CSV file with a 1 Hertz frequency.",
     "type":             "bool",
     "defaultValue":     false
 }

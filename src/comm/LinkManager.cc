@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -114,11 +114,11 @@ LinkInterface* LinkManager::createConnectedLink(SharedLinkConfigurationPointer& 
 #ifndef NO_SERIAL_LINK
     case LinkConfiguration::TypeSerial:
     {
-        SerialConfiguration* serialConfig = dynamic_cast<SerialConfiguration*>(config.data());
+        auto* serialConfig = qobject_cast<SerialConfiguration*>(config.data());
         if (serialConfig) {
             pLink = new SerialLink(config, isPX4Flow);
             if (serialConfig->usbDirect()) {
-                _activeLinkCheckList.append(dynamic_cast<SerialLink*>(pLink));
+                _activeLinkCheckList.append(qobject_cast<SerialLink*>(pLink));
                 if (!_activeLinkCheckTimer.isActive()) {
                     _activeLinkCheckTimer.start();
                 }
@@ -199,6 +199,7 @@ void LinkManager::_addLink(LinkInterface* link)
 
     connect(link, &LinkInterface::communicationError,   _app,               &QGCApplication::criticalMessageBoxOnMainThread);
     connect(link, &LinkInterface::bytesReceived,        _mavlinkProtocol,   &MAVLinkProtocol::receiveBytes);
+    connect(link, &LinkInterface::bytesSent,            _mavlinkProtocol,   &MAVLinkProtocol::logSentBytes);
 
     _mavlinkProtocol->resetMetadataForLink(link);
     _mavlinkProtocol->setVersion(_mavlinkProtocol->getCurrentVersion());
@@ -378,26 +379,26 @@ void LinkManager::loadLinkConfigurationList()
                             switch(type) {
 #ifndef NO_SERIAL_LINK
                             case LinkConfiguration::TypeSerial:
-                                pLink = dynamic_cast<LinkConfiguration*>(new SerialConfiguration(name));
+                                pLink = new SerialConfiguration(name);
                                 break;
 #endif
                             case LinkConfiguration::TypeUdp:
-                                pLink = dynamic_cast<LinkConfiguration*>(new UDPConfiguration(name));
+                                pLink = new UDPConfiguration(name);
                                 break;
                             case LinkConfiguration::TypeTcp:
-                                pLink = dynamic_cast<LinkConfiguration*>(new TCPConfiguration(name));
+                                pLink = new TCPConfiguration(name);
                                 break;
 #ifdef QGC_ENABLE_BLUETOOTH
                             case LinkConfiguration::TypeBluetooth:
-                                pLink = dynamic_cast<LinkConfiguration*>(new BluetoothConfiguration(name));
+                                pLink = new BluetoothConfiguration(name);
                                 break;
 #endif
                             case LinkConfiguration::TypeLogReplay:
-                                pLink = dynamic_cast<LinkConfiguration*>(new LogReplayLinkConfiguration(name));
+                                pLink = new LogReplayLinkConfiguration(name);
                                 break;
 #ifdef QT_DEBUG
                             case LinkConfiguration::TypeMock:
-                                pLink = dynamic_cast<LinkConfiguration*>(new MockConfiguration(name));
+                                pLink = new MockConfiguration(name);
                                 break;
 #endif
                             case LinkConfiguration::TypeLast:
@@ -761,6 +762,7 @@ bool LinkManager::endConfigurationEditing(LinkConfiguration* config, LinkConfigu
         saveLinkConfigurationList();
         // Tell link about changes (if any)
         config->updateSettings();
+        emit config->nameChanged(config->name());
         // Discard temporary duplicate
         delete editedConfig;
     } else {

@@ -21,8 +21,11 @@
 #include "CustomPlugin.h"
 #include "CustomQuickInterface.h"
 
-#include <QDirIterator>
-#include <QtAlgorithms>
+#include <QSettings>
+
+static const char* kGroupName       = "CustomSettings";
+static const char* kShowGimbalCtl   = "ShowGimbalCtl";
+static const char* kShowAttitudeWidget = "ShowAttitudeWidget";
 
 //-----------------------------------------------------------------------------
 CustomQuickInterface::CustomQuickInterface(QObject* parent)
@@ -41,4 +44,34 @@ CustomQuickInterface::~CustomQuickInterface()
 void
 CustomQuickInterface::init()
 {
+    QSettings settings;
+    settings.beginGroup(kGroupName);
+    _showGimbalControl = settings.value(kShowGimbalCtl, false).toBool();
+    _showAttitudeWidget = settings.value(kShowAttitudeWidget, false).toBool();
+}
+
+//-----------------------------------------------------------------------------
+void
+CustomQuickInterface::setShowGimbalControl(bool set)
+{
+    if(_showGimbalControl != set) {
+        _showGimbalControl = set;
+        QSettings settings;
+        settings.beginGroup(kGroupName);
+        settings.setValue(kShowGimbalCtl,set);
+        emit showGimbalControlChanged();
+    }
+}
+
+//-----------------------------------------------------------------------------
+void
+CustomQuickInterface::setShowAttitudeWidget(bool set)
+{
+    if(_showAttitudeWidget != set) {
+        _showAttitudeWidget = set;
+        QSettings settings;
+        settings.beginGroup(kGroupName);
+        settings.setValue(kShowAttitudeWidget,set);
+        emit showAttitudeWidgetChanged();
+    }
 }

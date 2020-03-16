@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -70,7 +70,7 @@ MockLink::MockLink(SharedLinkConfigurationPointer& config)
     , _vehicleLatitude                      (_defaultVehicleLatitude + ((_vehicleSystemId - 128) * 0.0001))     // Slight offset for each vehicle
     , _vehicleLongitude                     (_defaultVehicleLongitude + ((_vehicleSystemId - 128) * 0.0001))
     , _vehicleAltitude                      (_defaultVehicleAltitude)
-    , _fileServer                           (NULL)
+    , _fileServer                           (nullptr)
     , _sendStatusText                       (false)
     , _apmSendHomePositionOnEmptyList       (false)
     , _failureMode                          (MockConfiguration::FailNone)
@@ -104,6 +104,7 @@ MockLink::MockLink(SharedLinkConfigurationPointer& config)
 
     _adsbVehicleCoordinate = QGeoCoordinate(_vehicleLatitude, _vehicleLongitude).atDistanceAndAzimuth(1000, _adsbAngle);
     _adsbVehicleCoordinate.setAltitude(100);
+    _runningTime.start();
 }
 
 MockLink::~MockLink(void)
@@ -176,6 +177,7 @@ void MockLink::_run1HzTasks(void)
             _sendHighLatency2();
         } else {
             _sendVibration();
+            _sendSysStatus();
             _sendADSBVehicles();
             if (!qgcApp()->runningUnitTests()) {
                 // Sending RC Channels during unit test breaks RC tests which does it's own RC simulation
@@ -357,6 +359,28 @@ void MockLink::_sendHighLatency2(void)
     respondWithMavlinkMessage(msg);
 }
 
+void MockLink::_sendSysStatus(void)
+{
+    if(_batteryRemaining > 50) {
+        _batteryRemaining = static_cast<int8_t>(100 - (_runningTime.elapsed() / 1000));
+    }
+    mavlink_message_t   msg;
+    mavlink_msg_sys_status_pack_chan(
+        _vehicleSystemId,
+        _vehicleComponentId,
+        static_cast<uint8_t>(_mavlinkChannel),
+        &msg,
+        0,          // onboard_control_sensors_present
+        0,          // onboard_control_sensors_enabled
+        0,          // onboard_control_sensors_health
+        250,        // load
+        4200 * 4,   // voltage_battery
+        8000,       // current_battery
+        _batteryRemaining, // battery_remaining
+        0,0,0,0,0,0);
+    respondWithMavlinkMessage(msg);
+}
+
 void MockLink::_sendVibration(void)
 {
     mavlink_message_t   msg;
@@ -509,7 +533,7 @@ void MockLink::_handleManualControl(const mavlink_message_t& msg)
     mavlink_manual_control_t manualControl;
     mavlink_msg_manual_control_decode(&msg, &manualControl);
 
-    qDebug() << "MANUAL_CONTROL" << manualControl.x << manualControl.y << manualControl.z << manualControl.r;
+    qCDebug(MockLinkLog) << "MANUAL_CONTROL" << manualControl.x << manualControl.y << manualControl.z << manualControl.r;
 }
 
 void MockLink::_setParamFloatUnionIntoMap(int componentId, const QString& paramName, float paramFloat)
@@ -756,7 +780,7 @@ void MockLink::_handleParamRequestRead(const mavlink_message_t& msg)
     mavlink_param_request_read_t request;
     mavlink_msg_param_request_read_decode(&msg, &request);
 
-    const QString paramName(QString::fromLocal8Bit(request.param_id, strnlen(request.param_id, MAVLINK_MSG_PARAM_REQUEST_READ_FIELD_PARAM_ID_LEN)));
+    const QString paramName(QString::fromLocal8Bit(request.param_id, static_cast<int>(strnlen(request.param_id, MAVLINK_MSG_PARAM_REQUEST_READ_FIELD_PARAM_ID_LEN))));
     int componentId = request.target_component;
 
     // special case for magic _HASH_CHECK value
@@ -974,7 +998,7 @@ void MockLink::_respondWithAutopilotVersion(void)
                                             _vehicleComponentId,
                                             _mavlinkChannel,
                                             &msg,
-                                            MAV_PROTOCOL_CAPABILITY_MAVLINK2 | (_firmwareType == MAV_AUTOPILOT_ARDUPILOTMEGA ? 0 : MAV_PROTOCOL_CAPABILITY_MISSION_FENCE | MAV_PROTOCOL_CAPABILITY_MISSION_RALLY),
+                                            MAV_PROTOCOL_CAPABILITY_MAVLINK2 | MAV_PROTOCOL_CAPABILITY_MISSION_FENCE | MAV_PROTOCOL_CAPABILITY_MISSION_RALLY | (_firmwareType == MAV_AUTOPILOT_ARDUPILOTMEGA ? MAV_PROTOCOL_CAPABILITY_TERRAIN : 0),
                                             flightVersion,                   // flight_sw_version,
                                             0,                               // middleware_sw_version,
                                             0,                               // os_sw_version,
@@ -989,9 +1013,9 @@ void MockLink::_respondWithAutopilotVersion(void)
     respondWithMavlinkMessage(msg);
 }
 
-void MockLink::setMissionItemFailureMode(MockLinkMissionItemHandler::FailureMode_t failureMode)
+void MockLink::setMissionItemFailureMode(MockLinkMissionItemHandler::FailureMode_t failureMode, MAV_MISSION_RESULT failureAckResult)
 {
-    _missionItemHandler.setMissionItemFailureMode(failureMode);
+    _missionItemHandler.setFailureMode(failureMode, failureAckResult);
 }
 
 void MockLink::_sendHomePosition(void)
@@ -1110,7 +1134,7 @@ MockConfiguration::MockConfiguration(MockConfiguration* source)
 void MockConfiguration::copyFrom(LinkConfiguration *source)
 {
     LinkConfiguration::copyFrom(source);
-    MockConfiguration* usource = dynamic_cast<MockConfiguration*>(source);
+    auto* usource = qobject_cast<MockConfiguration*>(source);
 
     if (!usource) {
         qWarning() << "dynamic_cast failed" << source << usource;

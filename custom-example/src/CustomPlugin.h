@@ -42,6 +42,9 @@ class CustomOptions : public QGCOptions
 public:
     CustomOptions(CustomPlugin*, QObject* parent = nullptr);
     bool        wifiReliableForCalibration      () const final { return true; }
+#if defined(Q_OS_LINUX)
+    double      toolbarHeightMultiplier         () final { return 1.25; }
+#endif
     QUrl        flyViewOverlay                  () const final { return QUrl::fromUserInput("qrc:/custom/CustomFlyView.qml"); }
     QUrl        preFlightChecklistUrl           () const final { return QUrl::fromUserInput("qrc:/custom/PreFlightCheckList.qml"); }
     //-- We have our own toolbar
@@ -76,6 +79,7 @@ public:
     QString                 brandImageIndoor                () const final;
     QString                 brandImageOutdoor               () const final;
     bool                    overrideSettingsGroupVisibility (QString name) final;
+    VideoManager*           createVideoManager              (QGCApplication* app, QGCToolbox* toolbox) final;
     VideoReceiver*          createVideoReceiver             (QObject* parent) final;
     QQmlApplicationEngine*  createRootWindow                (QObject* parent) final;
     bool                    adjustSettingMetaData           (const QString& settingsGroup, FactMetaData& metaData) final;
