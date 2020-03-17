@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   (c) 2009-2016 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
+ * (c) 2009-2020 QGROUNDCONTROL PROJECT <http://www.qgroundcontrol.org>
  *
  * QGroundControl is licensed according to the terms in the file
  * COPYING.md in the root of the source code directory.
@@ -29,15 +29,15 @@
 #include "QGC.h"
 #include "UAS.h"
 #include "UASInterface.h"
-#include "QGCMessageBox.h"
+//-- TODO: #include "QGCMessageBox.h"
 
 QGCXPlaneLink::QGCXPlaneLink(Vehicle* vehicle, QString remoteHost, QHostAddress localHost, quint16 localPort) :
     _vehicle(vehicle),
     remoteHost(QHostAddress("127.0.0.1")),
     remotePort(49000),
-    socket(NULL),
-    process(NULL),
-    terraSync(NULL),
+    socket(nullptr),
+    process(nullptr),
+    terraSync(nullptr),
     barometerOffsetkPa(-8.0f),
     airframeID(QGCXPlaneLink::AIRFRAME_UNKNOWN),
     xPlaneConnected(false),
@@ -75,7 +75,7 @@ QGCXPlaneLink::~QGCXPlaneLink()
     if (socket) {
         socket->close();
         socket->deleteLater();
-        socket = NULL;
+        socket = nullptr;
     }
 }
 
@@ -180,7 +180,7 @@ void QGCXPlaneLink::run()
         emit statusMessage("Binding socket failed!");
 
         socket->deleteLater();
-        socket = NULL;
+        socket = nullptr;
         return;
     }
 
@@ -260,7 +260,7 @@ void QGCXPlaneLink::run()
 
     socket->close();
     socket->deleteLater();
-    socket = NULL;
+    socket = nullptr;
 
     emit simulationDisconnected();
     emit simulationConnected(false);
@@ -302,7 +302,7 @@ void QGCXPlaneLink::processError(QProcess::ProcessError err)
     }
     
     
-    QGCMessageBox::critical(tr("X-Plane HIL"), msg);
+    //-- TODO: QGCMessageBox::critical(tr("X-Plane HIL"), msg);
 }
 
 QString QGCXPlaneLink::getRemoteHost()
@@ -513,7 +513,7 @@ void QGCXPlaneLink::updateActuatorControls(quint64 time, quint64 flags, float ct
         default:
         {
             /* direct pass-through, normal fixed-wing. */
-            p.f[0] = -ctl_1;        ///< X-Plane Elevator
+            p.f[0] = ctl_1;        ///< X-Plane Elevator
             p.f[1] = ctl_0;         ///< X-Plane Aileron
             p.f[2] = ctl_2;         ///< X-Plane Rudder
 
@@ -522,10 +522,16 @@ void QGCXPlaneLink::updateActuatorControls(quint64 time, quint64 flags, float ct
             writeBytesSafe((const char*)&p, sizeof(p));
 
             /* Send throttle to all eight motors */
+            // get (-1 to 1) to (0 to 1)
+            // ctl_3 = (ctl_3 + 1.0f)/2.0f; for the front thrust it's done somewhere already so no need
+            ctl_4 = (ctl_4 + 1.0f)/2.0f;
+            ctl_5 = (ctl_5 + 1.0f)/2.0f;
+
             p.index = 25;
             p.f[0] = ctl_3;
-            p.f[1] = ctl_3;
-            p.f[2] = ctl_3;
+            p.f[1] = ctl_5;
+            p.f[2] = ctl_4;
+
             p.f[3] = ctl_3;
             p.f[4] = ctl_3;
             p.f[5] = ctl_3;
